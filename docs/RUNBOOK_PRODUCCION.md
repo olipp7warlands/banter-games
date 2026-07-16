@@ -32,12 +32,32 @@ git push -u origin main
 - [ ] Sembrar `daily_games` de 30 días: copiar `scripts/.env.example` a `scripts/.env`, rellenar `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, `npm run seed-daily`. Sembrar también `packs` (hero/pirate/space, 300 monedas).
 - [ ] **M2 (chat Realtime + podio + rachas)** — cuando llegues a esa fase: SQL Editor → pegar `docs/DB_SCHEMA_M2.sql` → Run (RLS de `chat_messages` restringida a `tipo='text'`, trigger `chat_score_event` que emite el evento de score al chat, y activa Realtime en `chat_messages`). Todos los scripts SQL de este repo (`DB_SCHEMA.sql`, `DB_SCHEMA_RLS_M1.sql`, `DB_SCHEMA_M2.sql`) son idempotentes — se pueden re-ejecutar sin el error 42710 (duplicate_object) si algo falla a mitad.
 
-## 3. Railway (20 min)
-- [ ] Nuevo proyecto → 2 servicios desde el repo:
-      · `shell` (Vite build estático; sirve también /games/* y /manifest.json)
-      · `api` (Node: valida scores+bonus, cupos de piques, cierra jornadas de liga por cron, sirve manifest, push)
-- [ ] Variables: shell → SUPABASE_URL, SUPABASE_ANON; api → + SERVICE_ROLE.
-- [ ] Conectar dominio + SSL.
+## 3. Railway — servicio `shell` (10 min)
+Solo el `shell` por ahora (Vite build estático, con los juegos ya copiados dentro por
+`copy-games`). El servicio `api` de `docs/ARQUITECTURA.md` (valida scores+bonus, cupos de
+piques, cron de ligas) todavía no existe en el repo — es scope de M3 en adelante, no de este
+paso. La config del servicio (`railway.json`, scripts `build`/`start` en `package.json`) ya
+está en el repo; verificada en local con el mismo comando exacto que usará Railway
+(`serve -s dist` sobre el build de producción) antes de tocar nada aquí, incluyendo el
+fallback SPA para rutas como `/join/:code` y `/groups/:id`.
+
+- [ ] En [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → seleccionar `olipp7warlands/banter-games`. Autoriza el GitHub App de Railway sobre ese repo si te lo pide.
+- [ ] Root Directory: dejar la raíz del repo (por defecto) — `railway.json` y los scripts npm ya están pensados para ejecutarse desde ahí (usan `npm run <script> -w packages/shell`), no desde `packages/shell/`.
+- [ ] Railway detecta `railway.json` automáticamente (builder Nixpacks, `npm run build` / `npm run start`). No hace falta tocar nada de Build/Start Command salvo que quieras verlo: Settings → Build/Deploy.
+- [ ] Settings → **Variables** → añadir exactamente estas dos (son las que lee `packages/shell/.env.local` en local, y Vite las incrusta en el build — deben estar puestas ANTES del primer deploy, no después):
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+  (Los mismos valores que ya tienes en `packages/shell/.env.local`. **Nunca** `SUPABASE_SERVICE_ROLE_KEY` aquí — esa es solo para `scripts/.env`, local, nunca en un servicio que sirve al navegador.)
+- [ ] Deploy (se dispara solo al crear el proyecto, o "Deploy" manual si hace falta). Cuando termine, Settings → Networking → **Generate Domain** te da la URL pública `https://<algo>.up.railway.app` — sirve tal cual por ahora, dominio propio queda para más adelante.
+- [ ] Probar en el navegador: la home carga, y sobre todo — abrir directamente (pegar en la barra de direcciones, no navegar con clics) `https://<tu-dominio>.up.railway.app/join/ABCDEF`. Tiene que cargar la app (pantalla de login o "no existe ese código"), **nunca** un 404 crudo de Railway/Nixpacks — si sale 404, revisar que `railway.json` se detectó y que el deploy usó el build más reciente.
+- [ ] Con el dominio ya generado, dos ajustes de auth pendientes en otros paneles (detallados abajo, sección "Tras el primer deploy").
+- [ ] Dominio propio + SSL: más adelante, cuando el nombre esté decidido (ver paso 0).
+
+### Tras el primer deploy: 2 ajustes de auth (si no, el login redirige mal o falla)
+- [ ] **Supabase** → Authentication → URL Configuration:
+  - **Site URL**: `https://<tu-dominio>.up.railway.app`
+  - **Redirect URLs**: añadir `https://<tu-dominio>.up.railway.app/auth/callback` (la ruta que ya existe en el shell, `AuthCallbackPage`) — sin borrar la de `http://localhost:5173/auth/callback` que sigue haciendo falta para dev.
+- [ ] **Google Cloud Console** → tu cliente OAuth (el mismo del paso 2) → **Authorized JavaScript origins** → añadir `https://<tu-dominio>.up.railway.app` (origin exacto, sin `/auth/callback` ni barra final — eso va en "Authorized redirect URIs", que ya apunta a Supabase y no cambia).
 
 ## 4. Claude Code (el grueso)
 - [ ] Abrir el repo con Claude Code: «Lee CLAUDE.md y docs/. Arranca el milestone M1.»
