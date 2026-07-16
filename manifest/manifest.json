@@ -1,0 +1,23 @@
+{
+  "version": "1.4.0",
+  "juegos": [
+    {"id":"trivia","nombre":"Trivia","emoji":"🧠","categoria":"cultura","version":"1.4.0","estado":"prod","par":50,"temas":["classic","hero","pirate","space"]},
+    {"id":"acertijos","nombre":"Acertijos","emoji":"❓","categoria":"cultura","version":"1.2.1","estado":"prod","par":60,"temas":["classic","hero","pirate","space"]},
+    {"id":"truefalse","nombre":"Verdadero o Falso","emoji":"✅","categoria":"cultura","version":"1.1.0","estado":"prod","par":35,"temas":["classic"]},
+    {"id":"anagram","nombre":"Anagrama","emoji":"🔤","categoria":"palabras","version":"1.3.2","estado":"prod","par":75,"temas":["classic","hero","pirate","space"]},
+    {"id":"math","nombre":"Cálculo","emoji":"🔢","categoria":"rapidez","version":"1.2.0","estado":"prod","par":45,"temas":["classic"]},
+    {"id":"bloques","nombre":"Bloques","emoji":"🟥","categoria":"ingenio","version":"1.5.0","estado":"prod","par":null,"temas":["classic","hero","pirate","space"]},
+    {"id":"ordenar","nombre":"Ordenar","emoji":"🧴","categoria":"ingenio","version":"1.1.3","estado":"prod","par":80,"temas":["classic"]},
+    {"id":"oddone","nombre":"El diferente","emoji":"🔍","categoria":"ingenio","version":"1.0.4","estado":"prod","par":45,"temas":["classic","hero","pirate","space"]},
+    {"id":"flechas","nombre":"Flechas","emoji":"➡️","categoria":"ingenio","version":"1.2.0","estado":"prod","par":90,"temas":["classic","hero","pirate","space"]},
+    {"id":"stack","nombre":"Stack","emoji":"🧱","categoria":"rapidez","version":"2.0.1","estado":"prod","par":null,"temas":["classic"]},
+    {"id":"tornillos","nombre":"Tornillos","emoji":"🔩","categoria":"ingenio","version":"1.0.2","estado":"prod","par":60,"temas":["classic"]},
+    {"id":"merge","nombre":"2048","emoji":"🧮","categoria":"ingenio","version":"1.0.1","estado":"prod","par":null,"temas":["classic"]},
+    {"id":"burbujas","nombre":"Burbujas","emoji":"🫧","categoria":"clasicos","version":"1.0.5","estado":"prod","par":null,"temas":["classic"]},
+    {"id":"memoria","nombre":"Memoria","emoji":"🃏","categoria":"clasicos","version":"1.3.0","estado":"prod","par":70,"temas":["classic","hero","pirate","space"]},
+    {"id":"arena","nombre":"Arena","emoji":"🌐","categoria":"arena","version":"0.9.0","estado":"qa","par":null,"temas":["classic","hero","pirate","space"]},
+    {"id":"volar","nombre":"Volar","emoji":"🦸","categoria":"pack:hero","version":"1.0.0","estado":"prod","par":null,"temas":["hero"]},
+    {"id":"cazatesoros","nombre":"Cazatesoros","emoji":"🏴‍☠️","categoria":"pack:pirate","version":"1.0.0","estado":"prod","par":null,"temas":["pirate"]},
+    {"id":"asteroides","nombre":"Asteroides","emoji":"🚀","categoria":"pack:space","version":"1.0.0","estado":"prod","par":null,"temas":["space"]}
+  ]
+}

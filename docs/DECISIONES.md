@@ -1,0 +1,12 @@
+# Decisiones fijadas (histórico corto)
+- **Nombre**: Banter ✅ (pendiente verificación legal; reservas: Rounds, Huddle, Gameday).
+- **Diseño**: N · Bauhaus ✅ — todo el producto se adapta a él (ver CLAUDE.md tokens). Exploración completa en prototype/definitivos.html.
+- **Público**: generalista 35-65; juegos de cabeza como núcleo.
+- **Loop**: reto diario por grupo, misma seed, 2 intentos, mejor marca, crono ascendente con bonus contra par (+2/s).
+- **Social**: chinchar (gratis) + Modo Picante opt-in con reglas de sabotaje justo + mesas Mundial solo-positivas.
+- **Competición**: Ligas semanales entre grupos (top-5, 60% participación, brackets, roster lock, anti-cheat).
+- **Economía**: monedas por jugar; packs 300 (objetivo 5-9 días); packs = contenido+skins+juego exclusivo.
+- **Fábrica**: pipeline referencia→spec(IA)→arquetipo+config→QA→manifest. Clonar mecánicas, jamás arte/nombres.
+- **Distribución**: PWA primero; stores tras validar; itch/Poki como embudo; SEO agéntico.
+- **Gate innegociable**: prueba de 7 días con grupo real antes de escalar features.
+- **Repo**: https://github.com/olipp7warlands/banter-games

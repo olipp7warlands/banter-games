@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Banter · Backoffice</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{margin:0;padding:0;background:#12100D;color:#EDE6DC;font-family:'Inter',system-ui,sans-serif}
+input,textarea,select,button{font-family:inherit}
+::placeholder{color:#7A6F63}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useRef } = React;
+
+const C = { bg:"#12100D", panel:"#1C1814", panel2:"#241F19", line:"rgba(255,255,255,.08)", ink:"#EDE6DC", mut:"#9A8E80", acc:"#FF6B6B", acc2:"#4DA8FF", ok:"#4CC42B", warn:"#F5A623", off:"#8A8178" };
+const disp = "'Bricolage Grotesque',sans-serif", mono="'DM Mono',monospace";
+const CATS = { palabras:"🔤", ingenio:"🧩", cultura:"🧠", rapidez:"⚡", clasicos:"🎲", arena:"🌐", pack:"🎁" };
+
+const INIT = [
+  {id:"trivia",n:"Trivia",e:"🧠",cat:"cultura",v:"1.4.0",st:"prod",par:50,web:"1.4.0",app:"1.4.0",src:"nativo"},
+  {id:"acertijos",n:"Acertijos",e:"❓",cat:"cultura",v:"1.2.1",st:"prod",par:60,web:"1.2.1",app:"1.2.1",src:"nativo"},
+  {id:"truefalse",n:"Verdadero o Falso",e:"✅",cat:"cultura",v:"1.1.0",st:"prod",par:35,web:"1.1.0",app:"1.1.0",src:"nativo"},
+  {id:"anagram",n:"Anagrama",e:"🔤",cat:"palabras",v:"1.3.2",st:"prod",par:75,web:"1.3.2",app:"1.3.0",src:"nativo"},
+  {id:"math",n:"Cálculo",e:"🔢",cat:"rapidez",v:"1.2.0",st:"prod",par:45,web:"1.2.0",app:"1.2.0",src:"nativo"},
+  {id:"bloques",n:"Bloques",e:"🟥",cat:"ingenio",v:"1.5.0",st:"prod",par:null,web:"1.5.0",app:"1.4.2",src:"factory"},
+  {id:"ordenar",n:"Ordenar",e:"🧴",cat:"ingenio",v:"1.1.3",st:"prod",par:80,web:"1.1.3",app:"1.1.3",src:"factory"},
+  {id:"oddone",n:"El diferente",e:"🔍",cat:"ingenio",v:"1.0.4",st:"prod",par:45,web:"1.0.4",app:"1.0.4",src:"nativo"},
+  {id:"flechas",n:"Flechas",e:"➡️",cat:"ingenio",v:"1.2.0",st:"prod",par:90,web:"1.2.0",app:"1.2.0",src:"factory"},
+  {id:"stack",n:"Stack",e:"🧱",cat:"rapidez",v:"2.0.1",st:"prod",par:null,web:"2.0.1",app:"1.9.0",src:"factory"},
+  {id:"tornillos",n:"Tornillos",e:"🔩",cat:"ingenio",v:"1.0.2",st:"prod",par:60,web:"1.0.2",app:"1.0.2",src:"factory"},
+  {id:"merge",n:"2048",e:"🧮",cat:"ingenio",v:"1.0.1",st:"prod",par:null,web:"1.0.1",app:"1.0.1",src:"factory"},
+  {id:"burbujas",n:"Burbujas",e:"🫧",cat:"clasicos",v:"1.0.5",st:"prod",par:null,web:"1.0.5",app:"1.0.5",src:"factory"},
+  {id:"memoria",n:"Memoria",e:"🃏",cat:"clasicos",v:"1.3.0",st:"prod",par:70,web:"1.3.0",app:"1.3.0",src:"nativo"},
+  {id:"arena",n:"Arena",e:"🌐",cat:"arena",v:"0.9.0",st:"qa",par:null,web:"0.9.0",app:"—",src:"nativo"},
+  {id:"volar",n:"Volar",e:"🦸",cat:"pack",v:"1.0.0",st:"prod",par:null,web:"1.0.0",app:"1.0.0",src:"nativo"},
+  {id:"cazatesoros",n:"Cazatesoros",e:"🏴‍☠️",cat:"pack",v:"1.0.0",st:"prod",par:null,web:"1.0.0",app:"1.0.0",src:"nativo"},
+  {id:"asteroides",n:"Asteroides",e:"🚀",cat:"pack",v:"1.0.0",st:"prod",par:null,web:"1.0.0",app:"1.0.0",src:"nativo"},
+];
+
+async function askClaude(content){
+  const r = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, messages:[{role:"user",content}] })
+  });
+  const data = await r.json();
+  const txt = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  return txt.replace(/```json|```/g,"").trim();
+}
+
+function Pill({bg,c,children}){ return <span style={{fontFamily:mono,fontSize:11,padding:"3px 9px",borderRadius:20,background:bg,color:c||"#fff"}}>{children}</span>; }
+function H({children,sub}){ return <div style={{marginBottom:16}}><div style={{fontFamily:disp,fontWeight:800,fontSize:24}}>{children}</div>{sub&&<div style={{color:C.mut,fontSize:13,marginTop:3,lineHeight:1.5}}>{sub}</div>}</div>; }
+function Btn({onClick,solid,disabled,children,small}){ return <button onClick={onClick} disabled={disabled} style={{border:"none",borderRadius:10,padding:small?"7px 12px":"11px 18px",fontFamily:disp,fontWeight:700,fontSize:small?12:14,cursor:disabled?"default":"pointer",background:disabled?C.panel2:solid?C.acc:"rgba(255,255,255,.07)",color:disabled?C.mut:solid?"#fff":C.ink}}>{children}</button>; }
+
+function StatusBtn({st,onCycle}){
+  const map={prod:["PROD",C.ok],qa:["QA",C.warn],off:["OFF",C.off]};
+  const [l,col]=map[st];
+  return <button onClick={onCycle} title="Cambiar estado" style={{border:`1px solid ${col}`,color:col,background:"transparent",borderRadius:9,padding:"3px 10px",fontFamily:mono,fontSize:11,cursor:"pointer"}}>{l}</button>;
+}
+
+/* ================= FACTORY ================= */
+function Factory({onAdd}){
+  const [prompt,setPrompt]=useState("");
+  const [img,setImg]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [spec,setSpec]=useState(null);
+  const [err,setErr]=useState(null);
+  const fileRef=useRef(null);
+  const pick=(e)=>{
+    const f=e.target.files&&e.target.files[0]; if(!f)return;
+    const rd=new FileReader();
+    rd.onload=()=>setImg({data:String(rd.result).split(",")[1],type:f.type,name:f.name,url:String(rd.result)});
+    rd.readAsDataURL(f);
+  };
+  const gen=async()=>{
+    if(!prompt.trim()&&!img){setErr("Escribe una idea o sube una captura de referencia.");return;}
+    setLoading(true);setErr(null);setSpec(null);
+    try{
+      const instr = 'Eres el motor de una "Game Factory" de minijuegos hypercasual para Banter (app social de retos diarios de 1 minuto, ranking por puntos+tiempo, seed diario, packs temáticos: classic/hero/pirate/space). Analiza la referencia (texto y/o imagen de un juego) y responde SOLO con un JSON válido, sin markdown ni texto extra, exactamente con esta forma: {"nombre":"nombre propio en español (no el del juego original)","emoji":"1 emoji","arquetipo":"tap-away|stack|merge|sort|shooter|quiz|runner|whack|io|otro","categoria":"palabras|ingenio|cultura|rapidez|clasicos|arena","descripcion":"1 frase","mecanica_core":"2-3 frases","controles":"1 frase","condicion_fin":"1 frase","scoring":"1 frase","par_segundos":45,"dificultad":"fácil|media|difícil","temas_compatibles":["classic","hero","pirate","space"],"riesgos":"1 frase sobre riesgos legales o de UX"}. Referencia del usuario: ' + (prompt||"(solo imagen)");
+      const content = img ? [{type:"image",source:{type:"base64",media_type:img.type,data:img.data}},{type:"text",text:instr}] : instr;
+      const raw = await askClaude(content);
+      const parsed = JSON.parse(raw);
+      setSpec(parsed);
+    }catch(e){ setErr("No pude generar la spec ("+(e.message||e)+"). Reintenta o simplifica la referencia."); }
+    setLoading(false);
+  };
+  return (
+    <div>
+      <H sub="Consola de prompting: describe un juego o sube una captura de referencia → la IA extrae la spec (arquetipo + config) → entra al catálogo en QA. El mismo pipeline que probamos con Flechas y Stack, ahora como herramienta.">🏭 Game Factory</H>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,alignItems:"start"}}>
+        <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,padding:16}}>
+          <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>referencia</div>
+          <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={5} placeholder={'Ej: "un juego tipo whack-a-mole pero de piratas, tocas cofres y evitas bombas, 20 segundos" — o sube una captura de un juego que quieras clonar (mecánica, nunca arte).'} style={{width:"100%",background:C.panel2,border:`1px solid ${C.line}`,borderRadius:12,color:C.ink,padding:12,fontSize:14,resize:"vertical",outline:"none"}}/>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginTop:10,flexWrap:"wrap"}}>
+            <Btn small onClick={()=>fileRef.current&&fileRef.current.click()}>🖼️ {img?"Cambiar captura":"Subir captura"}</Btn>
+            <input ref={fileRef} type="file" accept="image/*" onChange={pick} style={{display:"none"}}/>
+            {img&&<span style={{fontFamily:mono,fontSize:11,color:C.mut}}>{img.name}</span>}
+            {img&&<button onClick={()=>setImg(null)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontSize:13}}>✕</button>}
+            <div style={{flex:1}}/>
+            <Btn solid onClick={gen} disabled={loading}>{loading?"⏳ Analizando…":"⚙️ Generar spec"}</Btn>
+          </div>
+          {img&&<img src={img.url} alt="" style={{marginTop:10,maxWidth:"100%",maxHeight:140,borderRadius:10,border:`1px solid ${C.line}`}}/>}
+          {err&&<div style={{marginTop:10,color:C.acc,fontSize:13,background:"rgba(255,107,107,.1)",border:"1px solid rgba(255,107,107,.3)",borderRadius:10,padding:"9px 12px"}}>{err}</div>}
+        </div>
+        <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,padding:16,minHeight:220}}>
+          <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>spec generada</div>
+          {!spec&&!loading&&<div style={{color:C.mut,fontSize:13,lineHeight:1.6}}>Aquí aparecerá la ficha: nombre, arquetipo, mecánica, scoring, par de crono, temas compatibles y riesgos.</div>}
+          {loading&&<div style={{color:C.mut,fontSize:13}}>La IA está analizando la referencia…</div>}
+          {spec&&(<div style={{fontSize:13,lineHeight:1.7}}>
+            <div style={{fontFamily:disp,fontWeight:800,fontSize:20,marginBottom:4}}>{spec.emoji} {spec.nombre} <Pill bg="rgba(245,166,35,.15)" c={C.warn}>{spec.arquetipo}</Pill> <Pill bg="rgba(77,168,255,.15)" c={C.acc2}>{CATS[spec.categoria]||"🎮"} {spec.categoria}</Pill></div>
+            <div style={{color:C.mut,marginBottom:8}}>{spec.descripcion}</div>
+            <div><b>Mecánica:</b> {spec.mecanica_core}</div>
+            <div><b>Controles:</b> {spec.controles}</div>
+            <div><b>Fin:</b> {spec.condicion_fin}</div>
+            <div><b>Scoring:</b> {spec.scoring} · <b>Par:</b> {spec.par_segundos}s · <b>Dificultad:</b> {spec.dificultad}</div>
+            <div><b>Temas:</b> {(spec.temas_compatibles||[]).join(", ")}</div>
+            <div style={{color:C.warn}}><b>⚠ Riesgos:</b> {spec.riesgos}</div>
+            <div style={{marginTop:12,display:"flex",gap:8}}>
+              <Btn solid onClick={()=>{onAdd(spec);setSpec(null);setPrompt("");setImg(null);}}>＋ Añadir al catálogo (QA)</Btn>
+              <Btn onClick={()=>setSpec(null)}>Descartar</Btn>
+            </div>
+          </div>)}
+        </div>
+      </div>
+      <div style={{marginTop:14,fontSize:12,color:C.mut,lineHeight:1.6}}>Siguiente fase (Claude Code): la spec alimenta la <b style={{color:C.ink}}>plantilla del arquetipo</b> (SDK cableado) y sale un bundle jugable directo al panel QA. Legal: se clonan mecánicas, nunca arte/nombres.</div>
+    </div>
+  );
+}
+
+/* ================= CONTENIDO ================= */
+function Contenido(){
+  const [banks,setBanks]=useState({trivia:{n:"Trivia",count:5,items:[]},palabras:{n:"Palabras",count:5,items:[]},acertijos:{n:"Acertijos",count:5,items:[]}});
+  const [tipo,setTipo]=useState("trivia");
+  const [tema,setTema]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState(null);
+  const [preview,setPreview]=useState(null);
+  const gen=async()=>{
+    setLoading(true);setErr(null);setPreview(null);
+    try{
+      const fmt = tipo==="palabras" ? 'un array JSON de 10 palabras en español, mayúsculas, sin tildes, 4-7 letras, ej ["BARCO","ISLA"]' : 'un array JSON de 10 objetos {"q":"pregunta","opts":["a","b","c","d"],"a":indiceCorrecto} en español, dificultad media, aptas para todas las edades';
+      const raw = await askClaude('Genera contenido para el juego "'+tipo+'" de la app Banter sobre el tema "'+(tema||"cultura general")+'". Responde SOLO con '+fmt+', sin markdown ni texto extra.');
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) throw new Error("formato");
+      setPreview(arr);
+      setBanks(b=>({...b,[tipo]:{...b[tipo],count:b[tipo].count+arr.length,items:[...b[tipo].items,...arr]}}));
+    }catch(e){ setErr("Error generando ("+(e.message||e)+")"); }
+    setLoading(false);
+  };
+  return (
+    <div>
+      <H sub="Bancos de preguntas/palabras que alimentan el juego del día. El generador usa IA para ampliar cada banco por tema (los packs temáticos salen de aquí).">📚 Contenido</H>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:12,marginBottom:18}}>
+        {Object.entries(banks).map(([k,b])=>(
+          <div key={k} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}>
+            <div style={{fontFamily:disp,fontWeight:800,fontSize:16}}>{b.n}</div>
+            <div style={{fontFamily:mono,fontSize:24,color:C.acc2,margin:"6px 0 2px"}}>{b.count}</div>
+            <div style={{fontSize:11,color:C.mut}}>ítems en banco</div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,padding:16}}>
+        <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:10,textTransform:"uppercase",letterSpacing:1}}>generador con IA</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <select value={tipo} onChange={e=>setTipo(e.target.value)} style={{background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"10px 12px",fontSize:14,outline:"none"}}>
+            <option value="trivia">Trivia</option><option value="palabras">Palabras</option><option value="acertijos">Acertijos</option>
+          </select>
+          <input value={tema} onChange={e=>setTema(e.target.value)} placeholder="Tema (ej: piratas, cine de los 90, cocina…)" style={{flex:1,minWidth:180,background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"10px 12px",fontSize:14,outline:"none"}}/>
+          <Btn solid onClick={gen} disabled={loading}>{loading?"⏳ Generando…":"✨ Generar +10"}</Btn>
+        </div>
+        {err&&<div style={{marginTop:10,color:C.acc,fontSize:13}}>{err}</div>}
+        {preview&&(<div style={{marginTop:12,background:C.panel2,borderRadius:12,padding:12,maxHeight:220,overflowY:"auto",fontSize:12.5,lineHeight:1.7}}>
+          {preview.map((it,i)=><div key={i} style={{borderBottom:`1px solid ${C.line}`,padding:"4px 0"}}>{typeof it==="string"? it : <span><b>{it.q}</b> — {(it.opts||[]).map((o,j)=><span key={j} style={{color:j===it.a?C.ok:C.mut}}> {o}{j===it.a?" ✓":""} ·</span>)}</span>}</div>)}
+        </div>)}
+      </div>
+    </div>
+  );
+}
+
+/* ================= VERSIONES ================= */
+function Versiones(){
+  const [ch,setCh]=useState([
+    {id:"web",n:"🌐 Web (banter.app)",build:"2026.07.14",manifest:"1.4.0",state:"estable"},
+    {id:"ios",n:"🍎 iOS",build:"1.8.2",manifest:"1.4.0",state:"estable"},
+    {id:"android",n:"🤖 Android",build:"1.8.1",manifest:"1.3.0",state:"rollout 20%"},
+  ]);
+  const [log,setLog]=useState([
+    "14/07 · manifest 1.4.0 publicado en Web+iOS (añade Burbujas 1.0.5)",
+    "12/07 · Android fijado a manifest 1.3.0 por crash en Stack 2.0 (WebView antiguo)",
+  ]);
+  const setM=(id,v)=>{ setCh(cs=>cs.map(c=>c.id===id?{...c,manifest:v}:c)); setLog(l=>["hoy · "+id+" → manifest "+v+" (pendiente publicar)",...l]); };
+  return (
+    <div>
+      <H sub="Cada canal (web / iOS / Android) apunta a una versión del manifest de juegos. Así puedes publicar juegos nuevos en web sin tocar las apps, o congelar un canal si algo falla.">🚀 Versiones</H>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12,marginBottom:18}}>
+        {ch.map(c=>(
+          <div key={c.id} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}>
+            <div style={{fontFamily:disp,fontWeight:800,fontSize:16}}>{c.n}</div>
+            <div style={{fontSize:12,color:C.mut,margin:"4px 0 10px"}}>build {c.build} · <span style={{color:c.state==="estable"?C.ok:C.warn}}>{c.state}</span></div>
+            <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:5}}>manifest</div>
+            <select value={c.manifest} onChange={e=>setM(c.id,e.target.value)} style={{width:"100%",background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"9px 10px",fontSize:14,outline:"none"}}>
+              <option>1.3.0</option><option>1.4.0</option><option>1.5.0-beta</option>
+            </select>
+          </div>
+        ))}
+      </div>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}>
+        <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>registro</div>
+        {log.map((l,i)=><div key={i} style={{fontSize:12.5,color:C.mut,padding:"5px 0",borderBottom:`1px solid ${C.line}`}}>{l}</div>)}
+      </div>
+    </div>
+  );
+}
+
+/* ================= CALENDARIO ================= */
+function Calendario({catalog}){
+  const DAY0 = Math.floor(Date.now()/86400000);
+  const [selCat,setSelCat]=useState("ingenio");
+  const [ovr,setOvr]=useState({});
+  const games = catalog.filter(g=>g.cat===selCat&&g.st!=="off");
+  const rows = Array.from({length:14},(_,d)=>{
+    const auto = games.length? games[(DAY0+d)%games.length] : null;
+    const o = ovr[d];
+    return {d, date:new Date(Date.now()+d*86400000).toLocaleDateString("es",{weekday:"short",day:"numeric",month:"short"}), auto, cur: o? games.find(g=>g.id===o)||auto : auto, seed:(((DAY0+d)*2654435761)>>>0).toString(16).slice(0,6)};
+  });
+  return (
+    <div>
+      <H sub="Qué juego (y con qué seed) sale cada día en cada categoría. La rotación es automática; puedes forzar un override puntual (eventos, lanzamientos de pack).">📅 Juego del día</H>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        {Object.keys(CATS).filter(k=>k!=="pack").map(k=>(<button key={k} onClick={()=>setSelCat(k)} style={{border:"none",borderRadius:10,padding:"8px 14px",fontFamily:disp,fontWeight:700,fontSize:13,cursor:"pointer",background:selCat===k?C.acc:"rgba(255,255,255,.07)",color:selCat===k?"#fff":C.ink}}>{CATS[k]} {k}</button>))}
+      </div>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1.4fr .7fr 1.2fr",gap:8,padding:"10px 14px",fontFamily:mono,fontSize:10.5,color:C.mut,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.line}`}}><span>día</span><span>juego</span><span>seed</span><span>override</span></div>
+        {rows.map(r=>(
+          <div key={r.d} style={{display:"grid",gridTemplateColumns:"1fr 1.4fr .7fr 1.2fr",gap:8,padding:"8px 14px",alignItems:"center",borderBottom:`1px solid ${C.line}`,fontSize:13.5,background:r.d===0?"rgba(255,107,107,.06)":"transparent"}}>
+            <span style={{color:r.d===0?C.acc:C.ink}}>{r.d===0?"HOY · ":""}{r.date}</span>
+            <span>{r.cur? <b>{r.cur.e} {r.cur.n}</b> : <span style={{color:C.mut}}>sin juegos</span>}{ovr[r.d]&&<Pill bg="rgba(245,166,35,.15)" c={C.warn}> override</Pill>}</span>
+            <span style={{fontFamily:mono,fontSize:11.5,color:C.mut}}>{r.seed}</span>
+            <select value={ovr[r.d]||""} onChange={e=>setOvr(o=>{const n={...o}; if(e.target.value)n[r.d]=e.target.value; else delete n[r.d]; return n;})} style={{background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:9,padding:"6px 8px",fontSize:12.5,outline:"none"}}>
+              <option value="">auto (rotación)</option>
+              {games.map(g=><option key={g.id} value={g.id}>{g.e} {g.n}</option>)}
+            </select>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= ANTI-CHEAT ================= */
+function AntiCheat(){
+  const [flags,setFlags]=useState([
+    {id:1,u:"#4412",g:"🟥 Bloques",s:"9.999 pts",r:"score > p99.9 histórico",lvl:"alto"},
+    {id:2,u:"#1080",g:"🧠 Trivia",s:"270 pts · 4s",r:"tiempo infrahumano (5 aciertos en 4s)",lvl:"alto"},
+    {id:3,u:"#2233",g:"🔩 Tornillos",s:"320 pts",r:"12 partidas perfectas seguidas",lvl:"medio"},
+    {id:4,u:"#7781",g:"🧱 Stack",s:"48 bloques",r:"varianza de timing = 0 (bot)",lvl:"medio"},
+  ]);
+  const act=(id)=>setFlags(f=>f.filter(x=>x.id!==id));
+  const lvlC={alto:C.acc,medio:C.warn};
+  return (
+    <div>
+      <H sub="Detección de puntuaciones imposibles antes de que envenenen rankings y Ligas. En producción: reglas server-side + validación de replays.">🕵️ Anti-cheat</H>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:16}}>
+        {[["Flags hoy","4"],["% partidas sospechosas","0,07%"],["Anuladas esta semana","11"],["Bans","2"]].map(([k,v])=><div key={k} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}><div style={{fontSize:11.5,color:C.mut}}>{k}</div><div style={{fontFamily:mono,fontSize:22,marginTop:4}}>{v}</div></div>)}
+      </div>
+      {flags.length===0&&<div style={{color:C.mut}}>Cola limpia ✨</div>}
+      {flags.map(f=>(
+        <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:"12px 14px",marginBottom:8,fontSize:13.5,flexWrap:"wrap"}}>
+          <Pill bg={lvlC[f.lvl]+"22"} c={lvlC[f.lvl]}>{f.lvl.toUpperCase()}</Pill>
+          <span style={{fontFamily:mono,color:C.mut}}>{f.u}</span>
+          <b>{f.g}</b><span>{f.s}</span>
+          <span style={{flex:1,color:C.mut,fontSize:12.5}}>{f.r}</span>
+          <Btn small onClick={()=>act(f.id)}>Validar</Btn>
+          <Btn small onClick={()=>act(f.id)}>Anular score</Btn>
+          <button onClick={()=>act(f.id)} style={{border:`1px solid ${C.acc}`,color:C.acc,background:"transparent",borderRadius:9,padding:"6px 12px",fontFamily:disp,fontWeight:700,fontSize:12,cursor:"pointer"}}>Ban</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ================= ECONOMÍA ================= */
+function Economia(){
+  const [v,setV]=useState({win:25,first:50,excl:20,pack:300,partidas:3});
+  const set=(k)=>(e)=>setV(x=>({...x,[k]:Number(e.target.value)||0}));
+  const mediaDia = v.partidas*(v.win*0.8+v.first*0.2);
+  const dias = mediaDia>0? Math.ceil(v.pack/mediaDia) : "∞";
+  const F=({l,k})=>(<div style={{flex:"1 1 140px"}}><div style={{fontSize:11.5,color:C.mut,marginBottom:4}}>{l}</div><input type="number" value={v[k]} onChange={set(k)} style={{width:"100%",background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"9px 10px",fontFamily:mono,fontSize:14,outline:"none"}}/></div>);
+  return (
+    <div>
+      <H sub="Tuning de fuentes y sumideros de monedas. El objetivo: que un pack se sienta alcanzable (5-9 días de juego) sin regalarlo.">💰 Economía</H>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,padding:16,marginBottom:14}}>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+          <F l="🪙 por partida" k="win"/><F l="🪙 extra por ganar el día" k="first"/><F l="🪙 juego exclusivo" k="excl"/><F l="Precio pack" k="pack"/><F l="Partidas/día (jugador activo)" k="partidas"/>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
+        <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:16}}><div style={{fontSize:12,color:C.mut}}>Ingreso medio diario</div><div style={{fontFamily:mono,fontSize:26,margin:"4px 0"}}>{Math.round(mediaDia)} 🪙</div></div>
+        <div style={{background:C.panel,border:`1px solid ${dias>=5&&dias<=9?C.ok:C.warn}`,borderRadius:14,padding:16}}><div style={{fontSize:12,color:C.mut}}>Días hasta comprar un pack</div><div style={{fontFamily:mono,fontSize:26,margin:"4px 0",color:dias>=5&&dias<=9?C.ok:C.warn}}>{dias} días</div><div style={{fontSize:11,color:C.mut}}>objetivo: 5-9</div></div>
+        <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:16}}><div style={{fontSize:12,color:C.mut}}>Nota</div><div style={{fontSize:12.5,lineHeight:1.6,marginTop:4}}>Chinchar es gratis (motor social, no sumidero). El sumidero principal son los packs.</div></div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= PACKS ================= */
+function Packs({catalog}){
+  const [packs,setPacks]=useState([
+    {id:"classic",n:"Clásico",e:"🎯",price:0,st:"activo",date:"—",excl:"—"},
+    {id:"hero",n:"Superhéroes",e:"🦸",price:300,st:"activo",date:"12/05",excl:"Volar"},
+    {id:"pirate",n:"Piratas",e:"🏴‍☠️",price:300,st:"activo",date:"12/05",excl:"Cazatesoros"},
+    {id:"space",n:"Espacio",e:"🚀",price:300,st:"activo",date:"12/05",excl:"Asteroides"},
+  ]);
+  const [f,setF]=useState({n:"",e:"🎃",price:300,excl:""});
+  const add=()=>{ if(!f.n.trim())return; setPacks(p=>[...p,{id:"p"+Date.now(),n:f.n,e:f.e,price:f.price,st:"borrador",date:"—",excl:f.excl||"—"}]); setF({n:"",e:"🎃",price:300,excl:""}); };
+  return (
+    <div>
+      <H sub="Packs temáticos: contenido + skins + juego exclusivo. Los estacionales (Halloween, Navidad, Mundial de fútbol) son picos de ingresos programables.">🎁 Packs / DLC</H>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,overflow:"hidden",marginBottom:16}}>
+        {packs.map(p=>(
+          <div key={p.id} style={{display:"grid",gridTemplateColumns:"1.4fr .6fr .6fr .8fr .8fr",gap:8,padding:"10px 14px",alignItems:"center",borderBottom:`1px solid ${C.line}`,fontSize:13.5}}>
+            <b>{p.e} {p.n}</b>
+            <span style={{fontFamily:mono,color:C.mut}}>{p.price===0?"gratis":p.price+" 🪙"}</span>
+            <Pill bg={p.st==="activo"?"rgba(76,196,43,.14)":"rgba(245,166,35,.14)"} c={p.st==="activo"?C.ok:C.warn}>{p.st}</Pill>
+            <span style={{fontSize:12,color:C.mut}}>lanzado {p.date}</span>
+            <span style={{fontSize:12,color:C.mut}}>🎮 {p.excl}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,padding:16}}>
+        <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:10,textTransform:"uppercase",letterSpacing:1}}>nuevo pack</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <input value={f.e} onChange={e=>setF({...f,e:e.target.value})} style={{width:56,textAlign:"center",background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"10px 6px",fontSize:16,outline:"none"}}/>
+          <input value={f.n} onChange={e=>setF({...f,n:e.target.value})} placeholder="Nombre (ej: Halloween)" style={{flex:1,minWidth:150,background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"10px 12px",fontSize:14,outline:"none"}}/>
+          <input type="number" value={f.price} onChange={e=>setF({...f,price:Number(e.target.value)||0})} style={{width:90,background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"10px 10px",fontFamily:mono,fontSize:14,outline:"none"}}/>
+          <select value={f.excl} onChange={e=>setF({...f,excl:e.target.value})} style={{background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"10px 10px",fontSize:13,outline:"none"}}>
+            <option value="">exclusivo: (elegir)</option>
+            {catalog.map(g=><option key={g.id} value={g.n}>{g.e} {g.n}</option>)}
+          </select>
+          <Btn solid onClick={add}>＋ Crear borrador</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= LIGAS ================= */
+function Ligas(){
+  const [cfg,setCfg]=useState({size:10,topK:5,minPart:60,dur:7});
+  const [log,setLog]=useState(["07/07 · Jornada 3 cerrada: 412 ascensos, 409 descensos"]);
+  const set=(k)=>(e)=>setCfg(c=>({...c,[k]:Number(e.target.value)||0}));
+  const divs=[["🥉 Bronce",1840],["🥈 Plata",1210],["🥇 Oro",640],["💎 Diamante",180]];
+  const F=({l,k})=>(<div style={{flex:"1 1 130px"}}><div style={{fontSize:11.5,color:C.mut,marginBottom:4}}>{l}</div><input type="number" value={cfg[k]} onChange={set(k)} style={{width:"100%",background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:10,padding:"9px 10px",fontFamily:mono,fontSize:14,outline:"none"}}/></div>);
+  return (
+    <div>
+      <H sub="Configuración de la competición semanal entre grupos: reglas anti-trampa (top-K, participación mínima, roster lock) y estado de las divisiones.">🏆 Ligas</H>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,padding:16,marginBottom:14}}>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+          <F l="Grupos por división" k="size"/><F l="Top-K que puntúa" k="topK"/><F l="Participación mín. (%)" k="minPart"/><F l="Jornada (días)" k="dur"/>
+        </div>
+        <div style={{fontSize:12,color:C.mut,marginTop:10}}>Fijas: seed global · sin sabotaje en el intento de liga · fichajes puntúan al día siguiente (roster lock).</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:14}}>
+        {divs.map(([n,g])=><div key={n} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}><div style={{fontFamily:disp,fontWeight:800,fontSize:16}}>{n}</div><div style={{fontFamily:mono,fontSize:20,margin:"4px 0"}}>{g}</div><div style={{fontSize:11,color:C.mut}}>grupos</div></div>)}
+      </div>
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+        <Btn solid onClick={()=>setLog(l=>["hoy · Jornada 4 cerrada manualmente (simulación)",...l])}>Cerrar jornada ahora</Btn>
+        <span style={{fontSize:12,color:C.mut}}>quedan 3 días para el cierre automático</span>
+      </div>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}>
+        {log.map((l,i)=><div key={i} style={{fontSize:12.5,color:C.mut,padding:"5px 0",borderBottom:`1px solid ${C.line}`}}>{l}</div>)}
+      </div>
+    </div>
+  );
+}
+
+/* ================= FLAGS ================= */
+function Flags(){
+  const [fl,setFl]=useState([
+    {id:"picante",n:"🌶️ Modo Picante",st:"on",pct:100,note:"opt-in por grupo"},
+    {id:"mundial",n:"🌍 Mesas Mundial",st:"on",pct:100,note:"reacciones capadas a positivas"},
+    {id:"crono",n:"⏱ Crono ascendente",st:"on",pct:100,note:"sustituyó a la cuenta atrás"},
+    {id:"parAB",n:"🧪 A/B: par de Trivia 50s vs 40s",st:"ab",pct:50,note:"midiendo % de bonus conseguido"},
+    {id:"ligas",n:"🏆 Ligas",st:"ab",pct:20,note:"rollout gradual"},
+    {id:"y2k",n:"✨ Skin Y2K (temporada)",st:"off",pct:0,note:"guardada para evento"},
+  ]);
+  const cycle=(id)=>setFl(fs=>fs.map(f=>f.id===id?{...f,st:f.st==="on"?"ab":f.st==="ab"?"off":"on",pct:f.st==="on"?50:f.st==="ab"?0:100}:f));
+  const setPct=(id,v)=>setFl(fs=>fs.map(f=>f.id===id?{...f,pct:Number(v)}:f));
+  const map={on:["ON",C.ok],ab:["A/B",C.warn],off:["OFF",C.off]};
+  return (
+    <div>
+      <H sub="Activar features por porcentaje de usuarios y correr experimentos sin publicar versión nueva. Toca el estado para ciclar ON → A/B → OFF.">🚩 Feature flags & A/B</H>
+      {fl.map(f=>{const [l,col]=map[f.st];return (
+        <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:"12px 14px",marginBottom:8,fontSize:13.5,flexWrap:"wrap"}}>
+          <b style={{minWidth:230}}>{f.n}</b>
+          <button onClick={()=>cycle(f.id)} style={{border:`1px solid ${col}`,color:col,background:"transparent",borderRadius:9,padding:"4px 12px",fontFamily:mono,fontSize:11,cursor:"pointer"}}>{l}</button>
+          {f.st!=="off"&&<span style={{display:"flex",alignItems:"center",gap:6}}><input type="range" min="0" max="100" step="10" value={f.pct} onChange={e=>setPct(f.id,e.target.value)}/><span style={{fontFamily:mono,fontSize:12,width:40}}>{f.pct}%</span></span>}
+          <span style={{flex:1,color:C.mut,fontSize:12}}>{f.note}</span>
+        </div>
+      );})}
+    </div>
+  );
+}
+
+/* ================= ANALYTICS ================= */
+function AnalyticsG(){
+  const rows=[
+    {g:"🧠 Trivia",ini:1842,fin:92,t:31,par:50},{g:"🧱 Stack",ini:1310,fin:88,t:0,par:0},
+    {g:"🔩 Tornillos",ini:988,fin:71,t:52,par:60},{g:"➡️ Flechas",ini:742,fin:64,t:81,par:90},
+    {g:"🫧 Burbujas",ini:701,fin:83,t:0,par:0},{g:"🔤 Anagrama",ini:655,fin:95,t:38,par:75},
+    {g:"🌐 Arena",ini:214,fin:97,t:15,par:15},
+  ];
+  const sug=(r)=>{ if(r.fin<70) return ["abandono alto → revisar dificultad/onboarding",C.acc]; if(r.par&&r.t<r.par*0.6) return ["par muy holgado → bajar "+Math.round(r.par*0.75)+"s",C.warn]; return ["sano ✓",C.ok]; };
+  return (
+    <div>
+      <H sub="Salud por juego: cuántos empiezan, cuántos terminan y cómo va el tiempo medio contra el par del crono. La columna de sugerencia alimenta el tuning.">📈 Analytics por juego</H>
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1.1fr .6fr 1fr .8fr 1.4fr",gap:8,padding:"10px 14px",fontFamily:mono,fontSize:10.5,color:C.mut,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.line}`}}><span>juego</span><span>inicios</span><span>finalización</span><span>t. medio</span><span>sugerencia</span></div>
+        {rows.map(r=>{const [s,col]=sug(r);return (
+          <div key={r.g} style={{display:"grid",gridTemplateColumns:"1.1fr .6fr 1fr .8fr 1.4fr",gap:8,padding:"9px 14px",alignItems:"center",borderBottom:`1px solid ${C.line}`,fontSize:13.5}}>
+            <b>{r.g}</b>
+            <span style={{fontFamily:mono,color:C.mut,fontSize:12.5}}>{r.ini}</span>
+            <span style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:1,height:7,background:"rgba(255,255,255,.08)",borderRadius:6,overflow:"hidden"}}><span style={{display:"block",width:r.fin+"%",height:"100%",background:r.fin<70?C.acc:C.ok}}/></span><span style={{fontFamily:mono,fontSize:12}}>{r.fin}%</span></span>
+            <span style={{fontFamily:mono,fontSize:12.5,color:C.mut}}>{r.par?`${r.t}s / ${r.par}s`:"—"}</span>
+            <span style={{fontSize:12,color:col}}>{s}</span>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+}
+
+/* ================= PUSH ================= */
+function Push(){
+  const [tpl,setTpl]=useState([
+    {id:1,n:"«Tu grupo ya jugó 👀 — te esperan»",on:true,h:"19:00",trg:"grupo completo salvo tú"},
+    {id:2,n:"«🔥 Tu racha de 12 días peligra»",on:true,h:"21:30",trg:"sin jugar a fin de día"},
+    {id:3,n:"«🏆 Nueva jornada de Liga — vais 4º»",on:true,h:"lunes 09:00",trg:"grupos en Liga"},
+    {id:4,n:"«🍅 Leo te ha chinchado»",on:false,h:"instantánea",trg:"al recibir pique"},
+  ]);
+  const [log,setLog]=useState([]);
+  const tog=(id)=>setTpl(ts=>ts.map(t=>t.id===id?{...t,on:!t.on}:t));
+  return (
+    <div>
+      <H sub="Las notificaciones son el corazón del ritual diario — pero con mesura: máx. 1-2/día o la app acaba silenciada. Horarios en zona local del usuario.">🔔 Notificaciones</H>
+      {tpl.map(t=>(
+        <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:"12px 14px",marginBottom:8,fontSize:13.5,flexWrap:"wrap"}}>
+          <button onClick={()=>tog(t.id)} style={{width:42,height:24,borderRadius:20,border:"none",cursor:"pointer",background:t.on?C.ok:"rgba(255,255,255,.12)",position:"relative"}}><span style={{position:"absolute",top:3,left:t.on?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .15s"}}/></button>
+          <b style={{flex:1,minWidth:220}}>{t.n}</b>
+          <span style={{fontFamily:mono,fontSize:12,color:C.mut}}>⏰ {t.h}</span>
+          <span style={{fontSize:11.5,color:C.mut}}>{t.trg}</span>
+          <Btn small onClick={()=>setLog(l=>["test enviado: "+t.n,...l].slice(0,5))}>Enviar test</Btn>
+        </div>
+      ))}
+      {log.length>0&&<div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:12,marginTop:10}}>{log.map((l,i)=><div key={i} style={{fontSize:12,color:C.mut,padding:"3px 0"}}>📤 {l}</div>)}</div>}
+    </div>
+  );
+}
+
+/* ================= APP ================= */
+function App(){
+  const [tab,setTab]=useState("dash");
+  const [cat,setCat]=useState(INIT);
+  const [reports,setReports]=useState([
+    {id:1,t:"Chat mesa «Trivia Nights»: mensaje reportado por 2 usuarios"},
+    {id:2,t:"Nombre de mesa ofensivo: «xXx____xXx» (Mundial)"},
+    {id:3,t:"Score anómalo: 9.999 pts en Bloques (posible cheat, usuario #4412)"},
+  ]);
+  const cycle=(id)=>setCat(cs=>cs.map(g=>g.id===id?{...g,st:g.st==="prod"?"qa":g.st==="qa"?"off":"prod"}:g));
+  const setPar=(id,v)=>setCat(cs=>cs.map(g=>g.id===id?{...g,par:v===""?null:Number(v)}:g));
+  const addFromFactory=(spec)=>{
+    const id=(spec.nombre||"nuevo").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,"").slice(0,12)+Date.now()%1000;
+    setCat(cs=>[{id,n:spec.nombre,e:spec.emoji||"🎮",cat:spec.categoria||"ingenio",v:"0.1.0",st:"qa",par:spec.par_segundos||null,web:"—",app:"—",src:"factory"},...cs]);
+    setTab("catalog");
+  };
+  const kpi=[["DAU","1.284","+12%"],["Retención D1","46%","+3pts"],["Partidas/día","5.902","+9%"],["Chinchazos/día","2.417","+22%"]];
+  const bars=[52,61,58,70,74,68,82];
+  const menu=[["dash","📊 Dashboard"],["cal","📅 Juego del día"],["catalog","🎮 Catálogo"],["factory","🏭 Game Factory"],["content","📚 Contenido"],["packs","🎁 Packs / DLC"],["leagues","🏆 Ligas"],["eco","💰 Economía"],["flags","🚩 Flags & A/B"],["analytics","📈 Analytics"],["push","🔔 Notificaciones"],["versions","🚀 Versiones"],["cheat","🕵️ Anti-cheat"],["mod","🛡️ Moderación"]];
+  return (
+    <div style={{display:"flex",minHeight:"100vh"}}>
+      <div style={{width:210,flex:"0 0 auto",background:C.panel,borderRight:`1px solid ${C.line}`,padding:"18px 12px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:22,paddingLeft:6}}>
+          <div style={{width:26,height:26,borderRadius:"50%",background:`linear-gradient(135deg,${C.acc},${C.acc2})`,display:"grid",placeItems:"center",fontSize:13}}>💬</div>
+          <div><div style={{fontFamily:disp,fontWeight:800,fontSize:17,lineHeight:1}}>Banter</div><div style={{fontFamily:mono,fontSize:9.5,color:C.mut}}>BACKOFFICE v0.1</div></div>
+        </div>
+        {menu.map(([k,l])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{display:"block",width:"100%",textAlign:"left",border:"none",background:tab===k?"rgba(255,107,107,.12)":"transparent",color:tab===k?C.acc:C.ink,borderRadius:10,padding:"10px 12px",fontSize:14,fontWeight:600,cursor:"pointer",marginBottom:3}}>{l}</button>
+        ))}
+        <div style={{marginTop:22,fontSize:10.5,color:C.mut,paddingLeft:6,lineHeight:1.6}}>Prototipo · datos simulados<br/>salvo Factory y Contenido (IA real).<br/>Producción: Railway + Supabase.</div>
+      </div>
+      <div style={{flex:1,padding:"24px 26px",maxWidth:1000}}>
+        {tab==="dash"&&(<div>
+          <H sub="Vista rápida de la salud del producto. En producción, estas métricas salen de Supabase.">📊 Dashboard</H>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:18}}>
+            {kpi.map(([k,v,d])=><div key={k} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:14}}><div style={{fontSize:12,color:C.mut}}>{k}</div><div style={{fontFamily:mono,fontSize:26,margin:"4px 0 2px"}}>{v}</div><div style={{fontSize:11,color:C.ok}}>{d} vs semana pasada</div></div>)}
+          </div>
+          <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:16,marginBottom:18}}>
+            <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:12,textTransform:"uppercase",letterSpacing:1}}>partidas · últimos 7 días</div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:10,height:110}}>
+              {bars.map((h,i)=><div key={i} style={{flex:1,height:`${h}%`,background:i===6?C.acc:"rgba(255,255,255,.14)",borderRadius:"8px 8px 0 0"}}/>)}
+            </div>
+          </div>
+          <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,padding:16}}>
+            <div style={{fontFamily:mono,fontSize:11,color:C.mut,marginBottom:10,textTransform:"uppercase",letterSpacing:1}}>top juegos hoy</div>
+            {[["🧠 Trivia","1.842 partidas"],["🧱 Stack","1.310"],["🔩 Tornillos","988"],["➡️ Flechas","742"]].map(([n,v])=><div key={n} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.line}`,fontSize:14}}><span>{n}</span><span style={{fontFamily:mono,color:C.mut,fontSize:12}}>{v}</span></div>)}
+          </div>
+        </div>)}
+
+        {tab==="catalog"&&(<div>
+          <H sub="El manifest en vivo: qué juegos existen, en qué estado (PROD/QA/OFF — toca para cambiar), su par de crono editable y qué versión sirve cada plataforma.">🎮 Catálogo de juegos</H>
+          <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1.6fr .8fr .6fr .55fr .55fr .55fr .6fr",gap:8,padding:"10px 14px",fontFamily:mono,fontSize:10.5,color:C.mut,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.line}`}}>
+              <span>juego</span><span>categoría</span><span>estado</span><span>par(s)</span><span>web</span><span>app</span><span>origen</span>
+            </div>
+            {cat.map(g=>(
+              <div key={g.id} style={{display:"grid",gridTemplateColumns:"1.6fr .8fr .6fr .55fr .55fr .55fr .6fr",gap:8,padding:"9px 14px",alignItems:"center",borderBottom:`1px solid ${C.line}`,fontSize:13.5,opacity:g.st==="off"?.45:1}}>
+                <span><b>{g.e} {g.n}</b> <span style={{fontFamily:mono,fontSize:10.5,color:C.mut}}>v{g.v}</span></span>
+                <span style={{fontSize:12.5,color:C.mut}}>{CATS[g.cat]} {g.cat}</span>
+                <span><StatusBtn st={g.st} onCycle={()=>cycle(g.id)}/></span>
+                <span>{g.par!==null&&g.par!==undefined? <input value={g.par} onChange={e=>setPar(g.id,e.target.value)} style={{width:46,background:C.panel2,border:`1px solid ${C.line}`,color:C.ink,borderRadius:7,padding:"4px 6px",fontFamily:mono,fontSize:12,outline:"none"}}/> : <span style={{color:C.mut,fontFamily:mono,fontSize:12}}>—</span>}</span>
+                <span style={{fontFamily:mono,fontSize:12,color:C.mut}}>{g.web}</span>
+                <span style={{fontFamily:mono,fontSize:12,color:C.mut}}>{g.app}</span>
+                <span>{g.src==="factory"? <Pill bg="rgba(245,166,35,.14)" c={C.warn}>🏭 factory</Pill> : <Pill bg="rgba(255,255,255,.07)" c={C.mut}>nativo</Pill>}</span>
+              </div>
+            ))}
+          </div>
+        </div>)}
+
+        {tab==="factory"&&<Factory onAdd={addFromFactory}/>}
+        {tab==="content"&&<Contenido/>}
+        {tab==="versions"&&<Versiones/>}
+        {tab==="cal"&&<Calendario catalog={cat}/>}
+        {tab==="cheat"&&<AntiCheat/>}
+        {tab==="eco"&&<Economia/>}
+        {tab==="packs"&&<Packs catalog={cat}/>}
+        {tab==="leagues"&&<Ligas/>}
+        {tab==="flags"&&<Flags/>}
+        {tab==="analytics"&&<AnalyticsG/>}
+        {tab==="push"&&<Push/>}
+
+        {tab==="mod"&&(<div>
+          <H sub="Cola de reportes de mesas Mundial y chats. En producción: reglas automáticas + revisión humana.">🛡️ Moderación</H>
+          {reports.length===0&&<div style={{color:C.mut}}>Sin reportes pendientes ✨</div>}
+          {reports.map(r=>(
+            <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:"12px 14px",marginBottom:8,fontSize:14}}>
+              <span style={{flex:1}}>{r.t}</span>
+              <Btn small onClick={()=>setReports(rs=>rs.filter(x=>x.id!==r.id))}>Resolver</Btn>
+            </div>
+          ))}
+        </div>)}
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Banter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>html,body{margin:0;padding:0;background:#191713}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect, useCallback, useMemo } = React;
+
+/* ===========================================================
+   Banter — juegos diarios con tu círculo (público general)
+   Trivia · Palabras · Cálculo · tono amable ("Chinchar")
+   =========================================================== */
+
+const C = {
+  page: "#191713",
+  bg: "#F2EFE9", bg2: "#F7F4EE",
+  card: "#FFFFFF", cardWarm: "#FBF9F4",
+  surf: "rgba(26,26,26,0.06)", surf2: "rgba(26,26,26,0.11)",
+  ink: "#1A1A1A", ink2: "#4A4A4A", muted: "#8C8880",
+  coral: "#E63946", coralD: "#B02733",
+  teal: "#1D5DEC", tealD: "#1445B0",
+  basil: "#1D5DEC", basilT: "#1445B0",
+  gold: "#F4C20D", goldT: "#8A6D00",
+  grape: "#1A1A1A", flame: "#E63946",
+  line: "rgba(26,26,26,0.12)",
+};
+const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');`;
+const display = "'Jost', system-ui, sans-serif";
+const body = "'Inter', system-ui, sans-serif";
+const mono = "'DM Mono', monospace";
+
+const CATS = {
+  palabras: { name: "Palabras", emoji: "🔤", g1: "#1D5DEC", g2: "#F4C20D", games: ["anagram"] },
+  ingenio: { name: "Ingenio", emoji: "🧩", g1: "#E63946", g2: "#1D5DEC", games: ["bloques", "ordenar", "oddone", "flechas", "tornillos", "merge"] },
+  cultura: { name: "Cultura", emoji: "🧠", g1: "#1D5DEC", g2: "#E63946", games: ["trivia", "acertijos", "truefalse"] },
+  rapidez: { name: "Rapidez", emoji: "⚡", g1: "#F4C20D", g2: "#E63946", games: ["math", "stack"] },
+  clasicos: { name: "Clásicos", emoji: "🎲", g1: "#E63946", g2: "#F4C20D", games: ["memoria", "burbujas"] },
+  arena: { name: "Arena", emoji: "🌐", g1: "#1A1A1A", g2: "#1D5DEC", games: ["arena"] },
+};
+const GINFO = {
+  anagram: { name: "Anagrama", tag: "Ordena las letras" },
+  oddone: { name: "El diferente", tag: "Encuentra el distinto" },
+  trivia: { name: "Trivia", tag: "Preguntas de todo" },
+  truefalse: { name: "Verdadero o Falso", tag: "¿Cierto o mentira?" },
+  math: { name: "Cálculo", tag: "Mates rápidas" },
+  bloques: { name: "Bloques", tag: "Encaja y limpia líneas" },
+  ordenar: { name: "Ordenar", tag: "Agrupa por color" },
+  acertijos: { name: "Acertijos", tag: "Piensa lateral" },
+  memoria: { name: "Memoria", tag: "Encuentra las parejas" },
+  arena: { name: "Arena", tag: "Pilla más que nadie" },
+  flechas: { name: "Flechas", tag: "Despeja el tablero" },
+  stack: { name: "Stack", tag: "Apila sin fallar" },
+  tornillos: { name: "Tornillos", tag: "Desatornilla lo libre" },
+  merge: { name: "2048", tag: "Une y duplica" },
+  burbujas: { name: "Burbujas", tag: "Grupos de 3 para reventar" },
+  volar: { name: "Volar", tag: "Flappy de héroe" },
+  cazatesoros: { name: "Cazatesoros", tag: "Tesoros vs bombas" },
+  asteroides: { name: "Asteroides", tag: "Destruye asteroides" },
+};
+const QA_LIST = ["trivia", "acertijos", "truefalse", "anagram", "bloques", "ordenar", "oddone", "flechas", "stack", "tornillos", "merge", "burbujas", "memoria", "math", "arena"];
+const QA_EXCL = ["volar", "cazatesoros", "asteroides"];
+const QA_EMOJI = { trivia: "🧠", acertijos: "❓", truefalse: "✅", anagram: "🔤", bloques: "🟥", ordenar: "🧴", oddone: "🔍", flechas: "➡️", stack: "🧱", tornillos: "🔩", merge: "2️⃣", burbujas: "🫧", memoria: "🃏", math: "🔢", arena: "🌐", volar: "🦸", cazatesoros: "🏴‍☠️", asteroides: "🚀" };
+const DAY = Math.floor(Date.now() / 86400000);
+const todaysGame = (catId) => { const g = CATS[catId].games; return g[DAY % g.length]; };
+
+const TRIVIA = [
+  { q: "¿Capital de Francia?", opts: ["Roma", "París", "Berlín", "Madrid"], a: 1 },
+  { q: "¿Cuántos días tiene una semana?", opts: ["5", "6", "7", "8"], a: 2 },
+  { q: "¿Cuál es el planeta rojo?", opts: ["Venus", "Marte", "Júpiter", "Saturno"], a: 1 },
+  { q: "¿Quién escribió el Quijote?", opts: ["Lorca", "Cervantes", "Neruda", "Machado"], a: 1 },
+  { q: "¿Océano más grande del mundo?", opts: ["Atlántico", "Índico", "Ártico", "Pacífico"], a: 3 },
+];
+const WORDS = ["GATO", "MESA", "LIBRO", "PLAYA", "VERDE"];
+const TRUEFALSE = [
+  { s: "El Sol es una estrella.", a: true },
+  { s: "Los pingüinos pueden volar.", a: false },
+  { s: "España está en Europa.", a: true },
+  { s: "Una araña tiene seis patas.", a: false },
+  { s: "El agua hierve a 100 °C al nivel del mar.", a: true },
+];
+const ODD_PAIRS = [["🐶", "🐺"], ["😀", "😃"], ["🍎", "🍏"], ["⭐", "🌟"], ["🔵", "🟣"], ["🐢", "🐸"], ["🌻", "🌼"], ["🚗", "🚙"], ["🦆", "🐤"]];
+const RIDDLES = [
+  { q: "Cuanto más quitas, más grande se hace. ¿Qué es?", opts: ["Un agujero", "Una montaña", "Un globo", "El mar"], a: 0 },
+  { q: "Tiene ciudades pero no casas, ríos pero no agua. ¿Qué es?", opts: ["Un libro", "Un mapa", "Un sueño", "Una caja"], a: 1 },
+  { q: "¿Qué se moja mientras seca?", opts: ["El sol", "La toalla", "El viento", "La arena"], a: 1 },
+  { q: "Vuela sin alas y llora sin ojos. ¿Qué es?", opts: ["Un pájaro", "La nube", "El avión", "El humo"], a: 1 },
+  { q: "Cuantas más hay, menos ves. ¿Qué son?", opts: ["Las estrellas", "Las nubes", "Las tinieblas", "Las velas"], a: 2 },
+];
+const SORT_COLORS = ["#E63946", "#1D5DEC", "#F4C20D"];
+const MEM = ["🍎", "🍌", "🍇", "🍒", "🥝", "🍑"];
+const PIECES = [[[0, 0]], [[0, 0], [0, 1]], [[0, 0], [1, 0]], [[0, 0], [0, 1], [0, 2]], [[0, 0], [1, 0], [2, 0]], [[0, 0], [0, 1], [1, 0], [1, 1]], [[0, 0], [1, 0], [1, 1]], [[0, 0], [0, 1], [0, 2], [1, 2]], [[0, 1], [1, 0], [1, 1], [1, 2]]];
+
+const THEMES = {
+  classic: { name: "Clásico", emoji: "🎯", price: 0, accent: "#FF6F5E", tint: "#F5A623", desc: "El look original de Banter.", trivia: TRIVIA, words: WORDS, riddles: RIDDLES, mem: MEM, arenaEmoji: "🟡", oddPairs: ODD_PAIRS, blockColor: "#FF6F5E", exclusive: null },
+  hero: {
+    name: "Superhéroes", emoji: "🦸", price: 300, accent: "#E23B4E", tint: "#5B6FE8", desc: "Trivia, palabras y… ¡a volar!",
+    trivia: [
+      { q: "¿Cuál es la ciudad de Batman?", opts: ["Gotham", "Metrópolis", "Nueva York", "Central City"], a: 0 },
+      { q: "¿El metal de las garras de Lobezno?", opts: ["Oro", "Adamantium", "Acero", "Hierro"], a: 1 },
+      { q: "¿Alter ego de Spider-Man?", opts: ["Bruce Wayne", "Peter Parker", "Clark Kent", "Tony Stark"], a: 1 },
+      { q: "¿De qué color es Hulk?", opts: ["Azul", "Rojo", "Verde", "Morado"], a: 2 },
+      { q: "¿Quién empuña el martillo Mjölnir?", opts: ["Loki", "Thor", "Odín", "Hulk"], a: 1 },
+    ], words: ["HEROE", "CAPA", "PODER", "VOLAR", "ESCUDO"], riddles: RIDDLES,
+    mem: ["🦸", "🦇", "⚡", "🛡️", "💥", "🕷️"], arenaEmoji: "💥", oddPairs: [["🦸", "🦹"], ["🦇", "🐤"], ["⚡", "✨"], ["🛡️", "🔰"], ["💥", "🌟"], ["🕷️", "🐜"]], blockColor: "#E23B4E", exclusive: { id: "volar", name: "Volar" },
+  },
+  pirate: {
+    name: "Piratas", emoji: "🏴‍☠️", price: 300, accent: "#8A5A2B", tint: "#C9A24B", desc: "Mares, tesoros y cañones.",
+    trivia: [
+      { q: "¿Cómo se llama la bandera pirata?", opts: ["Jolly Roger", "Union Jack", "Tricolor", "Estandarte"], a: 0 },
+      { q: "¿Qué animal llevaban al hombro?", opts: ["Loro", "Gato", "Perro", "Mono"], a: 0 },
+      { q: "¿Con qué se orientaban en el mar?", opts: ["Brújula", "GPS", "Reloj", "Mapa del metro"], a: 0 },
+      { q: "¿Prótesis típica de un pirata?", opts: ["Brazo robótico", "Pata de palo", "Gafas", "Peluca"], a: 1 },
+      { q: "¿Qué guardaban en los cofres?", opts: ["Verduras", "Tesoros", "Libros", "Ropa"], a: 1 },
+    ], words: ["BARCO", "ISLA", "TESORO", "MAPA", "LORO"], riddles: RIDDLES,
+    mem: ["🏴‍☠️", "⚓", "🦜", "🗺️", "💰", "🧭"], arenaEmoji: "💰", oddPairs: [["🦜", "🐤"], ["⚓", "⛵"], ["💰", "💵"], ["🗺️", "📜"], ["🧭", "🕰️"], ["🏴‍☠️", "🏳️"]], blockColor: "#8A5A2B", exclusive: { id: "cazatesoros", name: "Cazatesoros" },
+  },
+  space: {
+    name: "Espacio", emoji: "🚀", price: 300, accent: "#3B4B9C", tint: "#8A6FC0", desc: "Planetas, cohetes y asteroides.",
+    trivia: [
+      { q: "¿Planeta más cercano al Sol?", opts: ["Venus", "Mercurio", "Marte", "Tierra"], a: 1 },
+      { q: "¿Qué orbita la Tierra?", opts: ["La Luna", "El Sol", "Marte", "Fobos"], a: 0 },
+      { q: "¿Cómo se llama nuestra galaxia?", opts: ["Andrómeda", "Vía Láctea", "Sombrero", "Remolino"], a: 1 },
+      { q: "¿Planeta con anillos famosos?", opts: ["Júpiter", "Saturno", "Urano", "Neptuno"], a: 1 },
+      { q: "¿Primer hombre en la Luna?", opts: ["Gagarin", "Armstrong", "Aldrin", "Collins"], a: 1 },
+    ], words: ["LUNA", "COHETE", "ASTRO", "ORBITA", "PLUTON"], riddles: RIDDLES,
+    mem: ["🚀", "🪐", "⭐", "🛸", "🌙", "☄️"], arenaEmoji: "⭐", oddPairs: [["🪐", "🌍"], ["⭐", "🌟"], ["🚀", "🛸"], ["🌙", "🌛"], ["☄️", "💫"], ["🌟", "✨"]], blockColor: "#3B4B9C", exclusive: { id: "asteroides", name: "Asteroides" },
+  },
+};
+function makeMath() {
+  const q = [];
+  for (let i = 0; i < 5; i++) {
+    const ops = [["+", (a, b) => a + b], ["−", (a, b) => a - b], ["×", (a, b) => a * b]];
+    let [sym, fn] = ops[Math.floor(Math.random() * ops.length)];
+    let a = 3 + Math.floor(Math.random() * 9), b = 2 + Math.floor(Math.random() * 8);
+    if (sym === "−" && b > a) [a, b] = [b, a];
+    const ans = fn(a, b);
+    const set = new Set([ans]);
+    while (set.size < 4) { const d = ans + (Math.floor(Math.random() * 11) - 5); if (d !== ans && d >= 0) set.add(d); }
+    const arr = [...set].sort(() => Math.random() - 0.5);
+    q.push({ q: `${a} ${sym} ${b}`, opts: arr.map(String), a: arr.indexOf(ans) });
+  }
+  return q;
+}
+
+const REACTIONS = [
+  { id: "clap", emoji: "👏", name: "Aplauso", tverb: "aplaudiste (irónico) a", verb: "te aplaudió (irónico)" },
+  { id: "fire", emoji: "🔥", name: "Crack", tverb: "llamaste crack a", verb: "te dijo crack" },
+  { id: "smug", emoji: "😏", name: "Chulería", tverb: "te chuleaste de", verb: "se chuleó de ti" },
+  { id: "slow", emoji: "🐢", name: "Lento", tverb: "llamaste lento a", verb: "te llamó lento" },
+  { id: "party", emoji: "🎉", name: "Confeti", tverb: "tiraste confeti a", verb: "te tiró confeti" },
+  { id: "brain", emoji: "🧠", name: "Cerebrito", tverb: "llamaste cerebrito a", verb: "te llamó cerebrito" },
+];
+
+const POS = REACTIONS.filter((r) => ["clap", "fire", "party", "brain"].includes(r.id));
+const REWARDS = [
+  { type: "coins", amount: 30, emoji: "🪙", label: "+30 monedas", w: 3 },
+  { type: "coins", amount: 60, emoji: "🪙", label: "+60 monedas", w: 1 },
+  { type: "theme", emoji: "🎨", label: "Tema: Atardecer", w: 1 },
+  { type: "frame", emoji: "🖼️", label: "Marco dorado", w: 1 },
+  { type: "streak", emoji: "🔥", label: "Escudo de racha", w: 1 },
+];
+function rollReward() {
+  const total = REWARDS.reduce((s, l) => s + l.w, 0);
+  let r = Math.random() * total;
+  for (const l of REWARDS) if ((r -= l.w) <= 0) return l;
+  return REWARDS[0];
+}
+
+const PB = { 1: { h: 92, c1: "#F4C20D", c2: "#F4C20D" }, 2: { h: 68, c1: "#1D5DEC", c2: "#1D5DEC" }, 3: { h: 52, c1: "#E63946", c2: "#E63946" } };
+
+const KF = `
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes shine{0%{transform:translateX(-120%) rotate(20deg)}100%{transform:translateX(240%) rotate(20deg)}}
+@keyframes fall{0%{transform:translateY(-30px) rotate(0);opacity:1}100%{transform:translateY(560px) rotate(380deg);opacity:0}}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes wob{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes slideup{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{from{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.2)}to{transform:rotate(360deg) scale(1)}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes floatup{0%{transform:translateY(10px) scale(.6);opacity:0}30%{opacity:1}100%{transform:translateY(-70px) scale(1);opacity:0}}
+@keyframes shakeq{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+@keyframes badpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes isofall{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(250px)}}
+button{border-radius:0 !important}
+@keyframes unscrew{0%{transform:rotate(0) translateY(0);opacity:1}100%{transform:rotate(540deg) translateY(-46px);opacity:0}}
+@keyframes plategone{to{opacity:0;transform:scale(.92) translateY(16px)}}
+@keyframes bpop{0%{transform:scale(1);opacity:1}100%{transform:scale(0);opacity:0}}
+`;
+
+function GameArt({ cat, h = 150, round = 18, themeEmoji, children }) {
+  const g = CATS[cat] || CATS.cultura;
+  return (
+    <div style={{ height: h, borderRadius: round, background: `linear-gradient(135deg, ${g.g1} 50%, ${g.g2} 50%)`, position: "relative", overflow: "hidden", display: "grid", placeItems: "center" }}>
+      {[15, 45, 75].map((l, i) => <div key={i} style={{ position: "absolute", top: `${10 + i * 25}%`, left: `${l}%`, width: 3, height: 34, background: "rgba(255,255,255,.35)", transform: "rotate(20deg)", borderRadius: 3 }} />)}
+      <div style={{ fontSize: h * 0.34, filter: "drop-shadow(0 4px 10px rgba(0,0,0,.3))", animation: "floaty 3s ease-in-out infinite" }}>{g.emoji}</div>
+      {themeEmoji && [[12, 16], [80, 22], [58, 70]].map((p, i) => <span key={i} style={{ position: "absolute", left: `${p[0]}%`, top: `${p[1]}%`, fontSize: h * 0.17, opacity: .95, animation: "floaty 3s ease-in-out infinite" }}>{themeEmoji}</span>)}
+      {children}
+    </div>
+  );
+}
+
+function Avatar({ p, size = 34, crown }) {
+  return (
+    <div style={{ position: "relative", width: size, height: size, borderRadius: size / 3, background: C.surf, border: `1px solid ${C.line}`, display: "grid", placeItems: "center", fontSize: size * 0.56 }}>
+      {p.emoji}
+      {crown && <span style={{ position: "absolute", top: -size * 0.42, left: "50%", transform: "translateX(-50%)", fontSize: size * 0.5 }}>👑</span>}
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Trivia / Cálculo (opción múltiple) ---------- */
+function QuizGame({ gameType, questions, onFinish }) {
+  const [idx, setIdx] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [picked, setPicked] = useState(null);
+  const q = questions[idx];
+  const pick = (i) => {
+    if (picked !== null) return;
+    setPicked(i);
+    const ok = i === q.a;
+    const pts = ok ? 45 : 0;
+    setTotal((t) => t + pts);
+    setTimeout(() => {
+      const n = idx + 1;
+      if (n >= questions.length) onFinish(total + pts);
+      else { setIdx(n); setPicked(null); }
+    }, 850);
+  };
+  return (
+    <div style={{ padding: "18px 18px 26px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>{GINFO[gameType].name}</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>{idx + 1}/{questions.length}</span>
+      </div>
+      <div style={{ textAlign: "center", margin: "10px 0", fontFamily: mono, fontSize: 30, fontWeight: 500, color: C.coral }}>{total}</div>
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "22px 16px", textAlign: "center", marginBottom: 14, boxShadow: "0 4px 14px rgba(42,18,24,.06)" }}>
+        <div style={{ fontFamily: display, fontWeight: 800, fontSize: gameType === "math" ? 32 : 20, color: C.ink }}>{q.q}</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {q.opts.map((o, i) => {
+          const isPicked = picked === i, correct = i === q.a;
+          const bg = picked === null ? C.surf : correct ? "rgba(47,191,113,.2)" : isPicked ? "rgba(255,111,94,.2)" : C.surf;
+          const bd = picked !== null && correct ? C.basil : picked !== null && isPicked ? C.coral : C.line;
+          return (
+            <button key={i} onClick={() => pick(i)} style={{ padding: "16px 8px", borderRadius: 14, border: `1.5px solid ${bd}`, background: bg, cursor: picked === null ? "pointer" : "default", fontFamily: display, fontWeight: 700, fontSize: 17, color: C.ink }}>
+              {o}{picked !== null && correct ? " ✓" : ""}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Verdadero o Falso ---------- */
+function TrueFalseGame({ onFinish }) {
+  const [idx, setIdx] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [picked, setPicked] = useState(null);
+  const q = TRUEFALSE[idx];
+  const pick = (val) => {
+    if (picked !== null) return;
+    setPicked(val);
+    const pts = val === q.a ? 45 : 0;
+    setTotal((t) => t + pts);
+    setTimeout(() => { const n = idx + 1; if (n >= TRUEFALSE.length) onFinish(total + pts); else { setIdx(n); setPicked(null); } }, 900);
+  };
+  const btn = (val, label, col) => {
+    const chosen = picked === val, correct = val === q.a;
+    const bg = picked === null ? C.surf : correct ? "rgba(47,191,113,.2)" : chosen ? "rgba(255,111,94,.2)" : C.surf;
+    const bd = picked !== null && correct ? C.basil : picked !== null && chosen ? C.coral : C.line;
+    return <button onClick={() => pick(val)} style={{ flex: 1, padding: "18px 0", borderRadius: 14, border: `1.5px solid ${bd}`, background: bg, cursor: picked === null ? "pointer" : "default", fontFamily: display, fontWeight: 800, fontSize: 18, color: C.ink }}>{label}{picked !== null && correct ? " ✓" : ""}</button>;
+  };
+  return (
+    <div style={{ padding: "18px 18px 26px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Verdadero o Falso</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>{idx + 1}/{TRUEFALSE.length}</span>
+      </div>
+      <div style={{ textAlign: "center", margin: "10px 0", fontFamily: mono, fontSize: 30, fontWeight: 500, color: C.coral }}>{total}</div>
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "26px 18px", textAlign: "center", marginBottom: 16, minHeight: 90, display: "grid", placeItems: "center", boxShadow: "0 4px 14px rgba(42,18,24,.06)" }}>
+        <div style={{ fontFamily: display, fontWeight: 800, fontSize: 20, color: C.ink }}>{q.s}</div>
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>{btn(true, "✅ Verdadero")}{btn(false, "❌ Falso")}</div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: El diferente ---------- */
+function OddOneGame({ pairs, onFinish }) {
+  const P = pairs || ODD_PAIRS;
+  const ROUNDS = 5;
+  const [round, setRound] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [cfg, setCfg] = useState(null);
+  const [wrong, setWrong] = useState(false);
+  const build = (r) => {
+    const cols = r < 2 ? 3 : r < 4 ? 4 : 5;
+    const n = cols * cols;
+    const [common, odd] = P[Math.floor(Math.random() * P.length)];
+    setCfg({ cols, n, common, odd, oddIndex: Math.floor(Math.random() * n) });
+  };
+  useEffect(() => { build(0); }, []); // eslint-disable-line
+  const pick = (i) => {
+    if (!cfg) return;
+    if (i === cfg.oddIndex) {
+      const pts = 45; setTotal((t) => t + pts);
+      const n = round + 1;
+      if (n >= ROUNDS) onFinish(total + pts);
+      else { setRound(n); build(n); }
+    } else { setWrong(true); setTimeout(() => setWrong(false), 320); }
+  };
+  if (!cfg) return null;
+  const size = cfg.cols === 3 ? 74 : cfg.cols === 4 ? 58 : 48;
+  return (
+    <div style={{ padding: "18px 18px 26px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>El diferente</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>{round + 1}/{ROUNDS}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Toca el emoji que es distinto a los demás.</div>
+      <div style={{ textAlign: "center", margin: "12px 0", fontFamily: mono, fontSize: 30, fontWeight: 500, color: C.coral }}>{total}</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cfg.cols}, 1fr)`, gap: 8, justifyContent: "center", animation: wrong ? "shakeq .5s" : undefined }}>
+        {Array.from({ length: cfg.n }).map((_, i) => (
+          <button key={i} onClick={() => pick(i)} style={{ height: size, borderRadius: 12, border: `1px solid ${C.line}`, background: C.card, cursor: "pointer", fontSize: size * 0.5, boxShadow: "0 2px 0 rgba(42,18,24,.08)" }}>{i === cfg.oddIndex ? cfg.odd : cfg.common}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Palabras (anagrama) ---------- */
+function AnagramGame({ words, onFinish }) {
+  const list = words || WORDS;
+  const [idx, setIdx] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [tiles, setTiles] = useState([]);
+  const [guess, setGuess] = useState([]);
+  const [bad, setBad] = useState(false);
+  const word = list[idx];
+  const shuffle = (w) => { const a = w.split("").map((ch, i) => ({ ch, i, used: false })); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1));[a[k], a[j]] = [a[j], a[k]]; } return a; };
+  useEffect(() => { setTiles(shuffle(word)); setGuess([]); }, [idx]); // eslint-disable-line
+  const tap = (t) => {
+    if (t.used) return;
+    const ng = [...guess, t]; setGuess(ng);
+    setTiles((ts) => ts.map((x) => (x.i === t.i ? { ...x, used: true } : x)));
+    if (ng.length === word.length) {
+      const made = ng.map((g) => g.ch).join("");
+      if (made === word) {
+        const pts = 50; setTotal((s) => s + pts);
+        setTimeout(() => { const n = idx + 1; if (n >= list.length) onFinish(total + pts); else setIdx(n); }, 700);
+      } else {
+        setBad(true);
+        setTimeout(() => { setBad(false); setGuess([]); setTiles((ts) => ts.map((x) => ({ ...x, used: false }))); }, 600);
+      }
+    }
+  };
+  const reset = () => { setGuess([]); setTiles((ts) => ts.map((x) => ({ ...x, used: false }))); };
+  return (
+    <div style={{ padding: "18px 18px 26px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Palabras</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>{idx + 1}/{list.length}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Ordena las letras para formar la palabra.</div>
+      <div style={{ textAlign: "center", margin: "12px 0", fontFamily: mono, fontSize: 30, fontWeight: 500, color: C.coral }}>{total}</div>
+      {/* guess row */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 18, animation: bad ? "shakeq .5s" : undefined }}>
+        {word.split("").map((_, i) => (
+          <div key={i} style={{ width: 48, height: 56, borderRadius: 12, border: `2px solid ${bad ? C.coral : C.line}`, background: C.card, display: "grid", placeItems: "center", fontFamily: display, fontWeight: 800, fontSize: 26, color: bad ? C.coral : C.ink }}>{guess[i] ? guess[i].ch : ""}</div>
+        ))}
+      </div>
+      {/* tiles */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        {tiles.map((t) => (
+          <button key={t.i} onClick={() => tap(t)} disabled={t.used} style={{ width: 48, height: 56, borderRadius: 12, border: `1.5px solid ${C.line}`, background: t.used ? C.surf : C.cardWarm, opacity: t.used ? .35 : 1, cursor: t.used ? "default" : "pointer", fontFamily: display, fontWeight: 800, fontSize: 26, color: C.ink, boxShadow: t.used ? "none" : "0 3px 0 rgba(42,18,24,.12)" }}>{t.ch}</button>
+        ))}
+      </div>
+      <button onClick={reset} style={{ display: "block", margin: "0 auto", padding: "9px 20px", border: `1px solid ${C.line}`, borderRadius: 12, background: C.surf, color: C.ink2, fontFamily: display, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>↺ Borrar</button>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Bloques (block puzzle) ---------- */
+function BlockGame({ color, onFinish }) {
+  const col = color || C.coral;
+  const N = 8;
+  const empty = () => Array.from({ length: N }, () => Array(N).fill(0));
+  const [grid, setGrid] = useState(empty);
+  const [hand, setHand] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [score, setScore] = useState(0);
+  const rand3 = () => Array.from({ length: 3 }, () => PIECES[Math.floor(Math.random() * PIECES.length)]);
+  useEffect(() => { setHand(rand3()); }, []); // eslint-disable-line
+  const canPlace = (g, p, r, c) => p.every(([dr, dc]) => { const rr = r + dr, cc = c + dc; return rr >= 0 && cc >= 0 && rr < N && cc < N && !g[rr][cc]; });
+  const hasSpot = (g, p) => { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (canPlace(g, p, r, c)) return true; return false; };
+  const anyMove = (g, h) => h.some((p) => p && hasSpot(g, p));
+  const place = (r, c) => {
+    if (sel == null || !hand[sel] || !canPlace(grid, hand[sel], r, c)) return;
+    const p = hand[sel];
+    const g = grid.map((row) => row.slice());
+    p.forEach(([dr, dc]) => { g[r + dr][c + dc] = 1; });
+    let gained = p.length;
+    const fr = [], fc = [];
+    for (let i = 0; i < N; i++) { if (g[i].every((v) => v)) fr.push(i); if (g.every((row) => row[i])) fc.push(i); }
+    fr.forEach((i) => { for (let x = 0; x < N; x++) g[i][x] = 0; });
+    fc.forEach((i) => { for (let x = 0; x < N; x++) g[x][i] = 0; });
+    gained += (fr.length + fc.length) * 10;
+    let nh = hand.slice(); nh[sel] = null;
+    if (nh.every((x) => !x)) nh = rand3();
+    setGrid(g); setHand(nh); setSel(null); setScore((s) => s + gained);
+    if (!anyMove(g, nh)) setTimeout(() => onFinish(score + gained), 700);
+  };
+  const cell = 34;
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Bloques</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>encaja y limpia</span>
+      </div>
+      <div style={{ textAlign: "center", margin: "8px 0", fontFamily: mono, fontSize: 30, fontWeight: 500, color: C.coral }}>{score}</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${N},1fr)`, gap: 3, width: N * cell, margin: "0 auto 14px" }}>
+        {grid.map((row, r) => row.map((v, c) => <button key={r + "-" + c} onClick={() => place(r, c)} style={{ height: cell, borderRadius: 6, border: "none", background: v ? col : C.surf, cursor: "pointer" }} />))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", gap: 14 }}>
+        {hand.map((p, i) => {
+          const rows = p ? Math.max(...p.map((x) => x[0])) + 1 : 0, cols = p ? Math.max(...p.map((x) => x[1])) + 1 : 0;
+          const has = (r, c) => p && p.some(([dr, dc]) => dr === r && dc === c);
+          return (
+            <button key={i} onClick={() => p && setSel(i)} disabled={!p} style={{ padding: 8, borderRadius: 12, border: sel === i ? `2px solid ${C.coral}` : `1px solid ${C.line}`, background: p ? (sel === i ? "rgba(255,111,94,.1)" : C.surf) : "transparent", cursor: p ? "pointer" : "default", opacity: p ? 1 : .3, minWidth: 58, minHeight: 58, display: "grid", placeItems: "center" }}>
+              {p && <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 2 }}>{Array.from({ length: rows * cols }).map((_, k) => <div key={k} style={{ width: 11, height: 11, borderRadius: 2, background: has(Math.floor(k / cols), k % cols) ? col : "transparent" }} />)}</div>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: body, fontSize: 12, color: C.muted, marginTop: 12 }}>Elige pieza y toca dónde va (esquina sup. izq.). Limpia filas y columnas.</div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Ordenar (color sort) ---------- */
+function SortGame({ onFinish }) {
+  const CAP = 4;
+  const init = () => {
+    const b = [];
+    SORT_COLORS.forEach((c) => { for (let i = 0; i < CAP; i++) b.push(c); });
+    for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[b[i], b[j]] = [b[j], b[i]]; }
+    const t = [];
+    for (let k = 0; k < SORT_COLORS.length; k++) t.push(b.slice(k * CAP, (k + 1) * CAP));
+    t.push([]); t.push([]);
+    return t;
+  };
+  const [tubes, setTubes] = useState(init);
+  const [sel, setSel] = useState(null);
+  const [moves, setMoves] = useState(0);
+  const win = (ts) => ts.every((t) => t.length === 0 || (t.length === CAP && t.every((c) => c === t[0])));
+  const tap = (i) => {
+    if (sel == null) { if (tubes[i].length) setSel(i); return; }
+    if (sel === i) { setSel(null); return; }
+    const from = tubes[sel], to = tubes[i];
+    if (!from.length) { setSel(null); return; }
+    const col = from[from.length - 1];
+    if (to.length >= CAP || (to.length && to[to.length - 1] !== col)) { setSel(null); return; }
+    const ts = tubes.map((t) => t.slice());
+    while (ts[sel].length && ts[sel][ts[sel].length - 1] === col && ts[i].length < CAP) ts[i].push(ts[sel].pop());
+    setTubes(ts); setSel(null); setMoves((m) => m + 1);
+    if (win(ts)) setTimeout(() => onFinish(Math.max(60, 280 - (moves + 1) * 10)), 500);
+  };
+  return (
+    <div style={{ padding: "18px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Ordenar</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>movs {moves}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Agrupa cada color en su tubo. Toca origen y luego destino.</div>
+      <div style={{ display: "flex", justifyContent: "center", gap: 12, margin: "24px 0" }}>
+        {tubes.map((t, i) => (
+          <button key={i} onClick={() => tap(i)} style={{ width: 44, height: CAP * 30 + 10, borderRadius: "0 0 12px 12px", border: `2px solid ${sel === i ? C.coral : C.line}`, borderTop: "none", background: C.bg2, display: "flex", flexDirection: "column-reverse", padding: 5, gap: 4, cursor: "pointer", transform: sel === i ? "translateY(-8px)" : "none", transition: "transform .15s" }}>
+            {t.map((col, k) => <div key={k} style={{ height: 26, borderRadius: 6, background: col }} />)}
+          </button>
+        ))}
+      </div>
+      <button onClick={() => { setTubes(init()); setSel(null); setMoves(0); }} style={{ display: "block", margin: "0 auto", padding: "9px 20px", border: `1px solid ${C.line}`, borderRadius: 12, background: C.surf, color: C.ink2, fontFamily: display, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>↺ Reiniciar</button>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Memoria (parejas) ---------- */
+function MemoryGame({ emojis, onFinish }) {
+  const POOL = emojis || MEM;
+  const [cards] = useState(() => { const a = [...POOL, ...POOL].map((e, i) => ({ e, i })); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1));[a[k], a[j]] = [a[j], a[k]]; } return a; });
+  const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState([]);
+  const [moves, setMoves] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
+  const [lock, setLock] = useState(false);
+  const tap = (idx) => {
+    if (lock) return;
+    const c = cards[idx];
+    if (matched.includes(c.e) || flipped.includes(idx)) return;
+    const nf = [...flipped, idx];
+    setFlipped(nf);
+    if (nf.length === 2) {
+      setMoves((m) => m + 1); setLock(true);
+      if (cards[nf[0]].e === cards[nf[1]].e) {
+        setTimeout(() => { const nm = [...matched, cards[nf[0]].e]; setMatched(nm); setFlipped([]); setLock(false); if (nm.length === POOL.length) onFinish(POOL.length * 30 + Math.max(0, 80 - mistakes * 8)); }, 500);
+      } else { setMistakes((x) => x + 1); setTimeout(() => { setFlipped([]); setLock(false); }, 750); }
+    }
+  };
+  return (
+    <div style={{ padding: "18px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Memoria</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted }}>movs {moves}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Encuentra las parejas.</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginTop: 16, maxWidth: 300, marginLeft: "auto", marginRight: "auto" }}>
+        {cards.map((c, idx) => { const show = matched.includes(c.e) || flipped.includes(idx); return (
+          <button key={idx} onClick={() => tap(idx)} style={{ height: 66, borderRadius: 12, border: `1px solid ${C.line}`, background: show ? C.cardWarm : C.coral, cursor: "pointer", fontSize: 30, opacity: matched.includes(c.e) ? .55 : 1, transition: "background .2s" }}>{show ? c.e : ""}</button>
+        ); })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Arena (.io simplificado) ---------- */
+function ArenaGame({ dotEmoji, onFinish }) {
+  const [time, setTime] = useState(15);
+  const [me, setMe] = useState(0);
+  const [bots, setBots] = useState([{ name: "Wei 🇨🇳", s: 0 }, { name: "Ana 🇪🇸", s: 0 }, { name: "Tom 🇺🇸", s: 0 }]);
+  const [dots, setDots] = useState(() => Array.from({ length: 6 }, (_, i) => ({ id: i, x: 8 + Math.random() * 84, y: 8 + Math.random() * 84 })));
+  const meRef = useRef(0), ended = useRef(false);
+  useEffect(() => { meRef.current = me; }, [me]);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setBots((bs) => bs.map((b) => ({ ...b, s: b.s + Math.floor(Math.random() * 3) })));
+      setTime((t) => { if (t <= 1) { clearInterval(iv); if (!ended.current) { ended.current = true; setTimeout(() => onFinish(meRef.current * 12), 300); } return 0; } return t - 1; });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []); // eslint-disable-line
+  const grab = (id) => { setMe((m) => m + 1); setDots((ds) => ds.map((d) => (d.id === id ? { ...d, x: 8 + Math.random() * 84, y: 8 + Math.random() * 84 } : d))); };
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 22 }}>🌐 Arena</span>
+        <span style={{ fontFamily: mono, fontSize: 16, fontWeight: 500, color: time <= 5 ? C.coral : C.ink }}>⏱ {time}s</span>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <span style={{ fontFamily: mono, fontSize: 12, color: "#fff", background: C.coral, padding: "4px 10px", borderRadius: 20 }}>Tú {me}</span>
+        {bots.map((b, i) => <span key={i} style={{ fontFamily: mono, fontSize: 12, color: C.ink, background: C.surf, padding: "4px 10px", borderRadius: 20 }}>{b.name} {b.s}</span>)}
+      </div>
+      <div style={{ position: "relative", height: 300, borderRadius: 16, background: "linear-gradient(160deg,#0E7C86,#22B8C4)", overflow: "hidden" }}>
+        {dots.map((d) => <button key={d.id} onClick={() => grab(d.id)} style={{ position: "absolute", left: `${d.x}%`, top: `${d.y}%`, width: 40, height: 40, marginLeft: -20, marginTop: -20, borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer", fontSize: 30, filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }}>{dotEmoji || "🟡"}</button>)}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: body, fontSize: 12, color: C.muted, marginTop: 10 }}>¡Toca las bolas antes que los demás!</div>
+    </div>
+  );
+}
+
+/* ---------- EXCLUSIVO Superhéroes: Volar ---------- */
+function FlappyGame({ onFinish }) {
+  const H = 360, W = 300, BX = 68, GAP = 128, WW = 46;
+  const [y, setY] = useState(H / 2);
+  const [vy, setVy] = useState(0);
+  const [walls, setWalls] = useState([]);
+  const [score, setScore] = useState(0);
+  const [dead, setDead] = useState(false);
+  const yR = useRef(H / 2), vyR = useRef(0), wR = useRef([]), sR = useRef(0), deadR = useRef(false), tk = useRef(0);
+  const flap = () => { if (!deadR.current) vyR.current = -5; };
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (deadR.current) return;
+      vyR.current += 0.42; yR.current += vyR.current;
+      let w = wR.current.map((o) => ({ ...o, x: o.x - 3.4 }));
+      tk.current++;
+      if (tk.current % 60 === 0) w.push({ x: W, gap: 45 + Math.random() * (H - GAP - 90), passed: false });
+      w.forEach((o) => { if (!o.passed && o.x + WW < BX) { o.passed = true; sR.current++; setScore(sR.current); } });
+      w = w.filter((o) => o.x > -WW);
+      const by = yR.current;
+      for (const o of w) if (BX + 20 > o.x && BX < o.x + WW && (by < o.gap || by > o.gap + GAP)) deadR.current = true;
+      if (by > H - 14 || by < 2) deadR.current = true;
+      wR.current = w; setWalls(w); setY(by); setVy(vyR.current);
+      if (deadR.current) { clearInterval(iv); setDead(true); setTimeout(() => onFinish(sR.current * 20), 800); }
+    }, 24);
+    return () => clearInterval(iv);
+  }, []); // eslint-disable-line
+  return (
+    <div onClick={flap} style={{ padding: 16, color: C.ink, cursor: "pointer", userSelect: "none" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 22 }}>🦸 Volar</span>
+        <span style={{ fontFamily: mono, fontSize: 18, color: C.coral }}>{score}</span>
+      </div>
+      <div style={{ position: "relative", width: W, height: H, margin: "0 auto", borderRadius: 16, overflow: "hidden", background: "linear-gradient(160deg,#8FB8FF,#5B6FE8)" }}>
+        {walls.map((o, i) => <React.Fragment key={i}>
+          <div style={{ position: "absolute", left: o.x, top: 0, width: WW, height: o.gap, background: "#E23B4E", borderRadius: "0 0 8px 8px" }} />
+          <div style={{ position: "absolute", left: o.x, top: o.gap + GAP, width: WW, height: H - (o.gap + GAP), background: "#E23B4E", borderRadius: "8px 8px 0 0" }} />
+        </React.Fragment>)}
+        <div style={{ position: "absolute", left: BX, top: y - 16, fontSize: 32, transform: `rotate(${Math.max(-25, Math.min(70, vy * 7))}deg)` }}>🦸</div>
+        {dead && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,.35)", color: "#fff", fontFamily: display, fontWeight: 800, fontSize: 24 }}>¡Chof! · {score}</div>}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: body, fontSize: 12, color: C.muted, marginTop: 10 }}>Toca para volar y esquiva los muros.</div>
+    </div>
+  );
+}
+
+/* ---------- EXCLUSIVO Piratas: Cazatesoros ---------- */
+function WhackGame({ onFinish }) {
+  const [time, setTime] = useState(20);
+  const [score, setScore] = useState(0);
+  const [cell, setCell] = useState({ idx: -1, type: null });
+  const sR = useRef(0), ended = useRef(false);
+  useEffect(() => { sR.current = score; }, [score]);
+  useEffect(() => {
+    const spawn = setInterval(() => {
+      const idx = Math.floor(Math.random() * 9), type = Math.random() < 0.75 ? "gold" : "bomb";
+      setCell({ idx, type });
+      setTimeout(() => setCell((c) => (c.idx === idx ? { idx: -1, type: null } : c)), 720);
+    }, 850);
+    const timer = setInterval(() => setTime((t) => { if (t <= 1) { clearInterval(timer); clearInterval(spawn); if (!ended.current) { ended.current = true; setTimeout(() => onFinish(Math.max(0, sR.current) * 12), 300); } return 0; } return t - 1; }), 1000);
+    return () => { clearInterval(spawn); clearInterval(timer); };
+  }, []); // eslint-disable-line
+  const hit = (i) => { if (cell.idx !== i) return; if (cell.type === "gold") setScore((s) => s + 1); else setScore((s) => Math.max(0, s - 1)); setCell({ idx: -1, type: null }); };
+  return (
+    <div style={{ padding: 16, color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 22 }}>🏴‍☠️ Cazatesoros</span>
+        <div style={{ display: "flex", gap: 8 }}><span style={{ fontFamily: mono, fontSize: 16, color: C.coral }}>{score}</span><span style={{ fontFamily: mono, fontSize: 16, color: time <= 5 ? C.coral : C.ink }}>⏱{time}</span></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, maxWidth: 280, margin: "10px auto" }}>
+        {Array.from({ length: 9 }).map((_, i) => (
+          <button key={i} onClick={() => hit(i)} style={{ height: 84, borderRadius: 16, border: `1px solid ${C.line}`, background: "linear-gradient(160deg,#E8D8B8,#C9A24B)", cursor: "pointer", fontSize: 40 }}>{cell.idx === i ? (cell.type === "gold" ? "💰" : "💣") : ""}</button>
+        ))}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: body, fontSize: 12, color: C.muted, marginTop: 10 }}>Toca los tesoros 💰, evita las bombas 💣.</div>
+    </div>
+  );
+}
+
+/* ---------- EXCLUSIVO Espacio: Asteroides ---------- */
+function FallGame({ onFinish }) {
+  const [time, setTime] = useState(20);
+  const [score, setScore] = useState(0);
+  const [rocks, setRocks] = useState([]);
+  const sR = useRef(0), ended = useRef(false), idc = useRef(0);
+  useEffect(() => { sR.current = score; }, [score]);
+  useEffect(() => {
+    const mv = setInterval(() => setRocks((rs) => rs.map((o) => ({ ...o, y: o.y + 4 })).filter((o) => o.y < 100)), 60);
+    const spawn = setInterval(() => setRocks((rs) => [...rs, { id: idc.current++, x: 8 + Math.random() * 84, y: -5 }]), 650);
+    const timer = setInterval(() => setTime((t) => { if (t <= 1) { clearInterval(timer); clearInterval(spawn); clearInterval(mv); if (!ended.current) { ended.current = true; setTimeout(() => onFinish(sR.current * 12), 300); } return 0; } return t - 1; }), 1000);
+    return () => { clearInterval(mv); clearInterval(spawn); clearInterval(timer); };
+  }, []); // eslint-disable-line
+  const blast = (id) => { setRocks((rs) => rs.filter((o) => o.id !== id)); setScore((s) => s + 1); };
+  return (
+    <div style={{ padding: 16, color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 22 }}>🚀 Asteroides</span>
+        <div style={{ display: "flex", gap: 8 }}><span style={{ fontFamily: mono, fontSize: 16, color: C.coral }}>{score}</span><span style={{ fontFamily: mono, fontSize: 16, color: time <= 5 ? C.coral : C.ink }}>⏱{time}</span></div>
+      </div>
+      <div style={{ position: "relative", height: 320, borderRadius: 16, background: "linear-gradient(160deg,#1B1040,#3B4B9C)", overflow: "hidden" }}>
+        {rocks.map((o) => <button key={o.id} onClick={() => blast(o.id)} style={{ position: "absolute", left: `${o.x}%`, top: `${o.y}%`, width: 34, height: 34, marginLeft: -17, border: "none", background: "transparent", cursor: "pointer", fontSize: 28 }}>☄️</button>)}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: body, fontSize: 12, color: C.muted, marginTop: 10 }}>Toca los asteroides antes de que caigan.</div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Flechas — fabricado desde referencia (tap-away) ---------- */
+function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function genArrows(seed, N, target) {
+  const rnd = mulberry32(seed);
+  const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  const occ = new Map(); const arrows = []; const key = (r, c) => r + "," + c;
+  const rayHasOcc = (r, c, d) => { let rr = r + d[0], cc = c + d[1]; while (rr >= 0 && rr < N && cc >= 0 && cc < N) { if (occ.has(key(rr, cc))) return true; rr += d[0]; cc += d[1]; } return false; };
+  let id = 0, fails = 0;
+  while (arrows.length < target && fails < 600) {
+    const len = 3 + Math.floor(rnd() * 3);
+    const sr = Math.floor(rnd() * N), sc = Math.floor(rnd() * N);
+    if (occ.has(key(sr, sc))) { fails++; continue; }
+    const cells = [[sr, sc]]; const used = new Set([key(sr, sc)]); let lastDir = null;
+    for (let i = 1; i < len; i++) {
+      const dirs = [...DIRS].sort(() => rnd() - 0.5); let moved = false;
+      for (const d of dirs) {
+        const [pr, pc] = cells[cells.length - 1]; const nr = pr + d[0], nc = pc + d[1];
+        if (nr < 0 || nr >= N || nc < 0 || nc >= N || occ.has(key(nr, nc)) || used.has(key(nr, nc))) continue;
+        cells.push([nr, nc]); used.add(key(nr, nc)); lastDir = d; moved = true; break;
+      }
+      if (!moved) break;
+    }
+    if (cells.length < 3 || !lastDir) { fails++; continue; }
+    const head = cells[cells.length - 1];
+    if (rayHasOcc(head[0], head[1], lastDir)) { fails++; continue; }
+    cells.forEach(([r, c]) => occ.set(key(r, c), id));
+    arrows.push({ id: id++, cells, dir: lastDir, out: false });
+  }
+  return arrows;
+}
+function ArrowGame({ seed, color, onFinish }) {
+  const N = 8, CS = 40;
+  const daily = seed != null;
+  const col = color && color.toUpperCase() !== "#FF6F5E" ? color : "#22304F";
+  const [arrows, setArrows] = useState(() => genArrows(daily ? seed : Math.floor(Math.random() * 1e9), N, 10));
+  const [hearts, setHearts] = useState(3);
+  const [score, setScore] = useState(0);
+  const [shakeId, setShakeId] = useState(null);
+  const [hintId, setHintId] = useState(null);
+  const [hints, setHints] = useState(2);
+  const heartsRef = useRef(3), scoreRef = useRef(0), ended = useRef(false);
+  useEffect(() => { heartsRef.current = hearts; }, [hearts]);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  const rayFree = (a, list) => {
+    const occ = new Set();
+    list.forEach((o) => { if (o.id !== a.id && !o.out) o.cells.forEach(([rr, cc]) => occ.add(rr + "," + cc)); });
+    const head = a.cells[a.cells.length - 1];
+    let r = head[0] + a.dir[0], c = head[1] + a.dir[1];
+    while (r >= 0 && r < N && c >= 0 && c < N) { if (occ.has(r + "," + c)) return false; r += a.dir[0]; c += a.dir[1]; }
+    return true;
+  };
+  const finish = (s) => { if (ended.current) return; ended.current = true; setTimeout(() => onFinish(s), 500); };
+  const tap = (a) => {
+    if (a.out || ended.current) return;
+    if (rayFree(a, arrows)) {
+      setArrows((as) => as.map((x) => (x.id === a.id ? { ...x, out: true } : x)));
+      setTimeout(() => {
+        setArrows((as) => {
+          const left = as.filter((x) => x.id !== a.id);
+          const ns = scoreRef.current + 18;
+          setScore(ns);
+          if (left.length === 0) finish(ns + heartsRef.current * 40 + 60);
+          return left;
+        });
+      }, 480);
+    } else {
+      setShakeId(a.id); setTimeout(() => setShakeId(null), 450);
+      setHearts((h) => { const nh = h - 1; if (nh <= 0) finish(scoreRef.current); return nh; });
+    }
+  };
+  const hint = () => { if (hints <= 0 || ended.current) return; const free = arrows.find((a) => !a.out && rayFree(a, arrows)); if (!free) return; setHints((h) => h - 1); setHintId(free.id); setTimeout(() => setHintId(null), 1600); };
+  const exitDist = (a) => { let steps = 0, r = a.cells[a.cells.length - 1][0], c = a.cells[a.cells.length - 1][1]; while (r >= 0 && r < N && c >= 0 && c < N) { r += a.dir[0]; c += a.dir[1]; steps++; } return (steps + a.cells.length + 1) * CS; };
+  const live = arrows.filter((a) => !a.out).length;
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Flechas</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontFamily: mono, fontSize: 13 }}>
+          <span style={{ background: C.surf, padding: "4px 10px", borderRadius: 20 }}>➤ {live}</span>
+          <span>{[0, 1, 2].map((i) => <span key={i} style={{ opacity: i < hearts ? 1 : 0.18 }}>❤️</span>)}</span>
+        </div>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Toca una flecha: sale si su camino hasta el borde está libre.</div>
+      <div style={{ textAlign: "center", margin: "8px 0", fontFamily: mono, fontSize: 28, fontWeight: 500, color: C.coral }}>{score}</div>
+      <svg width={N * CS} height={N * CS} viewBox={`0 0 ${N * CS} ${N * CS}`} style={{ display: "block", margin: "0 auto", background: C.card, borderRadius: 18, border: `1px solid ${C.line}`, maxWidth: "100%" }}>
+        <defs>
+          <marker id="ahn" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill={col} /></marker>
+          <marker id="ahh" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3B82F6" /></marker>
+        </defs>
+        {Array.from({ length: N * N }).map((_, i) => <circle key={i} cx={(i % N) * CS + CS / 2} cy={Math.floor(i / N) * CS + CS / 2} r="2.2" fill="rgba(42,18,24,.14)" />)}
+        {arrows.map((a) => {
+          const pts = a.cells.map(([r, c]) => `${c * CS + CS / 2},${r * CS + CS / 2}`).join(" ");
+          const hinted = hintId === a.id;
+          const d = exitDist(a);
+          return (
+            <g key={a.id} onClick={() => tap(a)} style={{ cursor: "pointer", transform: a.out ? `translate(${a.dir[1] * d}px, ${a.dir[0] * d}px)` : "none", transition: "transform .5s ease-in, opacity .4s ease-in .1s", opacity: a.out ? 0 : 1, animation: shakeId === a.id ? "shakeq .45s" : undefined }}>
+              <polyline points={pts} fill="none" stroke="transparent" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={pts} fill="none" stroke={hinted ? "#3B82F6" : col} strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#${hinted ? "ahh" : "ahn"})`} />
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 12 }}>
+        <button onClick={hint} disabled={hints <= 0} style={{ padding: "10px 18px", border: `1px solid ${C.line}`, borderRadius: 12, background: hints > 0 ? C.surf : "transparent", color: hints > 0 ? C.ink : C.muted, fontFamily: display, fontWeight: 700, fontSize: 13, cursor: hints > 0 ? "pointer" : "default" }}>💡 Pista · {hints}</button>
+      </div>
+      <div style={{ textAlign: "center", fontFamily: mono, fontSize: 11, color: C.muted, marginTop: 10 }}>{daily ? "seed diario · mismo tablero para todo el grupo" : "tablero aleatorio (modo QA)"}</div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Stack 3D iso — fabricado desde referencia ---------- */
+function StackGame({ seed, onFinish }) {
+  const SW = 340, SH = 380, CX = SW / 2, CY = 318, BLK = 22, VIS = 7, S0 = 110, TOL = 8;
+  const rndRef = useRef(mulberry32(seed != null ? seed + 77 : Math.floor(Math.random() * 1e9)));
+  const [hue0] = useState(() => Math.floor(rndRef.current() * 360));
+  const [stack, setStack] = useState(() => [{ x: -S0 / 2, y: -S0 / 2, w: S0, d: S0, hue: hue0 }]);
+  const [osc, setOsc] = useState(-180);
+  const [frags, setFrags] = useState([]);
+  const [score, setScore] = useState(0);
+  const [flash, setFlash] = useState(null);
+  const [over, setOver] = useState(false);
+  const posR = useRef(-180), dirR = useRef(1), spdR = useRef(120), ampR = useRef(S0 + 70), rafR = useRef(null), lastT = useRef(null);
+  const stkR = useRef(null), scR = useRef(0), cmbR = useRef(0), endR = useRef(false), fid = useRef(0);
+  stkR.current = stack; scR.current = score;
+  const axisOf = (lvl) => (lvl % 2 === 1 ? "x" : "y");
+  const loop = useCallback((t) => {
+    if (lastT.current == null) lastT.current = t;
+    const dt = (t - lastT.current) / 1000; lastT.current = t;
+    let p = posR.current + dirR.current * spdR.current * dt;
+    const A = ampR.current;
+    if (p >= A) { p = A; dirR.current = -1; }
+    if (p <= -A) { p = -A; dirR.current = 1; }
+    posR.current = p; setOsc(p);
+    rafR.current = requestAnimationFrame(loop);
+  }, []);
+  useEffect(() => { rafR.current = requestAnimationFrame(loop); return () => { if (rafR.current) cancelAnimationFrame(rafR.current); }; }, []); // eslint-disable-line
+  const drop = () => {
+    if (endR.current) return;
+    const st = stkR.current, top = st[st.length - 1], lvl = st.length, ax = axisOf(lvl);
+    const dim = ax === "x" ? top.w : top.d;
+    const o = posR.current;
+    if (Math.abs(o) >= dim - 4) {
+      endR.current = true; setOver(true);
+      if (rafR.current) cancelAnimationFrame(rafR.current);
+      setTimeout(() => onFinish(scR.current), 1100);
+      return;
+    }
+    const perfect = Math.abs(o) <= TOL;
+    let b = { x: top.x, y: top.y, w: top.w, d: top.d, hue: (top.hue + 9) % 360 };
+    let pts;
+    if (perfect) {
+      cmbR.current += 1; pts = 25;
+      if (cmbR.current >= 3) {
+        if (ax === "x") { const g = Math.min(10, S0 - b.w); b.x -= g / 2; b.w += g; }
+        else { const g = Math.min(10, S0 - b.d); b.y -= g / 2; b.d += g; }
+      }
+      setFlash("perfect"); setTimeout(() => setFlash(null), 550);
+    } else {
+      cmbR.current = 0; pts = 10;
+      const id = fid.current++;
+      let f;
+      if (ax === "x") {
+        if (o > 0) { b.x = top.x + o; b.w = top.w - o; f = { id, x: top.x + top.w, y: top.y, w: o, d: top.d, lvl, hue: top.hue }; }
+        else { b.w = top.w + o; f = { id, x: top.x + o, y: top.y, w: -o, d: top.d, lvl, hue: top.hue }; }
+      } else {
+        if (o > 0) { b.y = top.y + o; b.d = top.d - o; f = { id, x: top.x, y: top.y + top.d, w: top.w, d: o, lvl, hue: top.hue }; }
+        else { b.d = top.d + o; f = { id, x: top.x, y: top.y + o, w: top.w, d: -o, lvl, hue: top.hue }; }
+      }
+      setFrags((fs) => [...fs, f]);
+      setTimeout(() => setFrags((fs) => fs.filter((q) => q.id !== id)), 750);
+    }
+    setStack((s) => [...s, b]);
+    setScore((v) => v + pts);
+    spdR.current = Math.min(330, spdR.current + 7);
+    const nLvl = lvl + 1, nAx = axisOf(nLvl);
+    const nDim = nAx === "x" ? b.w : b.d;
+    ampR.current = nDim + 70;
+    posR.current = nLvl % 2 === 0 ? ampR.current : -ampR.current;
+    dirR.current = nLvl % 2 === 0 ? -1 : 1;
+  };
+  const P = (x, y, z) => [CX + (x - y) * 0.866, CY + (x + y) * 0.5 - z];
+  const face = (c, fill) => <polygon points={c.map(([a, b2]) => `${a.toFixed(1)},${b2.toFixed(1)}`).join(" ")} fill={fill} />;
+  const Cuboid = ({ x, y, w, d, z, h, hue }) => {
+    const z1 = z + h;
+    return (<g>
+      {face([P(x + w, y, z), P(x + w, y + d, z), P(x + w, y + d, z1), P(x + w, y, z1)], `hsl(${hue},58%,40%)`)}
+      {face([P(x, y + d, z), P(x + w, y + d, z), P(x + w, y + d, z1), P(x, y + d, z1)], `hsl(${hue},58%,50%)`)}
+      {face([P(x, y, z1), P(x + w, y, z1), P(x + w, y + d, z1), P(x, y + d, z1)], `hsl(${hue},60%,64%)`)}
+    </g>);
+  };
+  const lvlNow = stack.length, axNow = axisOf(lvlNow), top = stack[stack.length - 1];
+  const mv = { x: top.x + (axNow === "x" ? osc : 0), y: top.y + (axNow === "y" ? osc : 0), w: top.w, d: top.d };
+  const camOff = Math.max(0, stack.length - VIS) * BLK;
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Stack</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted, background: C.surf, padding: "4px 10px", borderRadius: 20 }}>🧱 {stack.length - 1}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Toca para soltar. Lo que sobresale, se corta.</div>
+      <div onClick={drop} style={{ position: "relative", width: SW, maxWidth: "100%", margin: "8px auto 0", borderRadius: 18, overflow: "hidden", background: "linear-gradient(180deg,#F3F0F9,#DAE4EE)", cursor: "pointer", border: `1px solid ${C.line}` }}>
+        <div style={{ position: "absolute", top: 12, left: 0, right: 0, textAlign: "center", fontFamily: mono, fontSize: 34, fontWeight: 500, color: "rgba(42,18,24,.5)", pointerEvents: "none" }}>{score}</div>
+        <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`} style={{ display: "block" }}>
+          <g style={{ transform: `translateY(${camOff}px)`, transition: "transform .25s" }}>
+            {stack.map((b, i) => <Cuboid key={i} x={b.x} y={b.y} w={b.w} d={b.d} z={i * BLK} h={BLK} hue={b.hue} />)}
+            {!over && <Cuboid x={mv.x} y={mv.y} w={mv.w} d={mv.d} z={lvlNow * BLK} h={BLK} hue={(top.hue + 9) % 360} />}
+            {frags.map((f) => (
+              <g key={f.id} style={{ animation: "isofall .75s ease-in forwards" }}>
+                <Cuboid x={f.x} y={f.y} w={f.w} d={f.d} z={f.lvl * BLK} h={BLK} hue={f.hue} />
+              </g>
+            ))}
+          </g>
+        </svg>
+        {flash === "perfect" && <div style={{ position: "absolute", top: "40%", left: 0, right: 0, textAlign: "center", fontFamily: display, fontWeight: 800, fontSize: 24, color: C.ink, textShadow: "0 2px 10px rgba(255,255,255,.8)", animation: "pop .3s" }}>¡PERFECTO! +25</div>}
+        {over && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(20,8,10,.35)", color: "#fff", fontFamily: display, fontWeight: 800, fontSize: 24 }}>Torre de {stack.length - 1} 🧱</div>}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: mono, fontSize: 11, color: C.muted, marginTop: 10 }}>ejes alternos · 3 perfectos recuperan tamaño</div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Tornillos — fabricado desde referencia (unscrew) ---------- */
+function genPlates(seed, BW, BH) {
+  const rnd = mulberry32(seed);
+  const PAL = ["#E8A24B", "#7FB069", "#5B8DD8", "#D96C5F", "#9B7BD0"];
+  const plates = []; let pid = 0, sid = 0;
+  [2, 2, 1].forEach((n, z) => {
+    for (let k = 0; k < n; k++) {
+      const w = 120 + Math.floor(rnd() * 60), h = 74 + Math.floor(rnd() * 44);
+      const x = 8 + Math.floor(rnd() * (BW - w - 16)), y = 8 + Math.floor(rnd() * (BH - h - 16));
+      const screws = Array.from({ length: 3 }, () => ({ id: sid++, px: 14 + Math.floor(rnd() * (w - 28)), py: 14 + Math.floor(rnd() * (h - 28)), out: false }));
+      plates.push({ id: pid++, z, x, y, w, h, col: PAL[Math.floor(rnd() * PAL.length)], screws, gone: false });
+    }
+  });
+  return plates;
+}
+function ScrewGame({ seed, onFinish }) {
+  const BW = 330, BH = 300;
+  const [plates, setPlates] = useState(() => genPlates(seed != null ? seed + 31 : Math.floor(Math.random() * 1e9), BW, BH));
+  const [score, setScore] = useState(0);
+  const [shake, setShake] = useState(null);
+  const scR = useRef(0), endR = useRef(false);
+  scR.current = score;
+  const blocked = (p, s) => plates.some((q) => !q.gone && q.z > p.z && p.x + s.px >= q.x && p.x + s.px <= q.x + q.w && p.y + s.py >= q.y && p.y + s.py <= q.y + q.h);
+  const tap = (p, s) => {
+    if (endR.current || s.out || p.gone) return;
+    if (blocked(p, s)) { setShake(s.id); setTimeout(() => setShake(null), 420); return; }
+    setPlates((ps) => ps.map((q) => (q.id === p.id ? { ...q, screws: q.screws.map((t) => (t.id === s.id ? { ...t, out: true } : t)) } : q)));
+    setScore((v) => v + 15);
+    setTimeout(() => {
+      setPlates((ps) => {
+        let all = ps.map((q) => (q.id === p.id ? { ...q, screws: q.screws.filter((t) => t.id !== s.id) } : q));
+        const pl = all.find((q) => q.id === p.id);
+        if (pl && pl.screws.length === 0 && !pl.gone) {
+          all = all.map((q) => (q.id === p.id ? { ...q, gone: true } : q));
+          setTimeout(() => {
+            setPlates((ps2) => {
+              const left = ps2.filter((q) => q.id !== p.id);
+              if (left.length === 0 && !endR.current) { endR.current = true; setTimeout(() => onFinish(scR.current + 60), 350); }
+              return left;
+            });
+          }, 430);
+        }
+        return all;
+      });
+    }, 340);
+  };
+  const nScrews = plates.reduce((a, p) => a + p.screws.filter((s) => !s.out).length, 0);
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Tornillos</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted, background: C.surf, padding: "4px 10px", borderRadius: 20 }}>🔩 {nScrews}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Solo salen los tornillos que no tapa otra placa. Vacía una placa y caerá.</div>
+      <div style={{ textAlign: "center", margin: "8px 0", fontFamily: mono, fontSize: 28, fontWeight: 500, color: C.coral }}>{score}</div>
+      <div style={{ position: "relative", width: BW, height: BH, margin: "0 auto", maxWidth: "100%", borderRadius: 18, background: C.bg2, border: `1px solid ${C.line}`, overflow: "hidden" }}>
+        {[...plates].sort((a, b) => a.z - b.z).map((p) => (
+          <React.Fragment key={p.id}>
+            <div style={{ position: "absolute", left: p.x, top: p.y, width: p.w, height: p.h, background: p.col, borderRadius: 12, border: "2px solid rgba(0,0,0,.18)", boxShadow: "0 4px 10px rgba(42,18,24,.22), inset 0 2px 0 rgba(255,255,255,.35)", animation: p.gone ? "plategone .45s forwards" : undefined }} />
+            {p.screws.map((s) => (
+              <button key={s.id} onClick={() => tap(p, s)} style={{ position: "absolute", left: p.x + s.px - 13, top: p.y + s.py - 13, width: 26, height: 26, borderRadius: "50%", border: "2px solid #6E7480", background: "radial-gradient(circle at 35% 30%, #F2F3F6, #A9AEB8)", cursor: "pointer", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800, color: "#5A616D", padding: 0, animation: s.out ? "unscrew .36s forwards" : shake === s.id ? "shakeq .42s" : undefined }}>✚</button>
+            ))}
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: mono, fontSize: 11, color: C.muted, marginTop: 10 }}>{seed != null ? "seed diario · mismo puzzle para el grupo" : "puzzle aleatorio (modo QA)"}</div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: 2048 — fabricado desde referencia (merge) ---------- */
+function MergeGame({ seed, onFinish }) {
+  const N = 4, MOVES = 40;
+  const rng = useRef(mulberry32(seed != null ? seed + 13 : Math.floor(Math.random() * 1e9)));
+  const spawn = (g) => {
+    const empt = []; g.forEach((row, r) => row.forEach((v, c) => { if (!v) empt.push([r, c]); }));
+    if (!empt.length) return g;
+    const [r, c] = empt[Math.floor(rng.current() * empt.length)];
+    const ng = g.map((row) => row.slice()); ng[r][c] = rng.current() < 0.9 ? 2 : 4; return ng;
+  };
+  const [grid, setGrid] = useState(() => spawn(spawn(Array.from({ length: N }, () => Array(N).fill(0)))));
+  const [score, setScore] = useState(0);
+  const [left, setLeft] = useState(MOVES);
+  const [over, setOver] = useState(false);
+  const endR = useRef(false), tRef = useRef(null);
+  const slideLine = (line) => {
+    const a = line.filter(Boolean); let gain = 0; const out = [];
+    for (let i = 0; i < a.length; i++) {
+      if (i + 1 < a.length && a[i] === a[i + 1]) { out.push(a[i] * 2); gain += a[i] * 2; i++; }
+      else out.push(a[i]);
+    }
+    while (out.length < N) out.push(0);
+    return [out, gain];
+  };
+  const move = (dir) => {
+    if (endR.current) return;
+    let g = grid.map((r) => r.slice()); let gain = 0; let changed = false;
+    const get = (i, j) => (dir === "L" ? g[i][j] : dir === "R" ? g[i][N - 1 - j] : dir === "U" ? g[j][i] : g[N - 1 - j][i]);
+    const set = (i, j, v) => { if (dir === "L") g[i][j] = v; else if (dir === "R") g[i][N - 1 - j] = v; else if (dir === "U") g[j][i] = v; else g[N - 1 - j][i] = v; };
+    for (let i = 0; i < N; i++) {
+      const line = Array.from({ length: N }, (_, j) => get(i, j));
+      const [out, gn] = slideLine(line); gain += gn;
+      for (let j = 0; j < N; j++) { if (get(i, j) !== out[j]) changed = true; set(i, j, out[j]); }
+    }
+    if (!changed) return;
+    g = spawn(g);
+    const ns = score + gain, nl = left - 1;
+    setGrid(g); setScore(ns); setLeft(nl);
+    const stuck = !g.some((row, r) => row.some((v, c) => !v || (c + 1 < N && v === g[r][c + 1]) || (r + 1 < N && v === g[r + 1][c])));
+    if (nl <= 0 || stuck) { endR.current = true; setOver(true); setTimeout(() => onFinish(ns), 1100); }
+  };
+  const onDown = (e) => { tRef.current = [e.clientX, e.clientY]; };
+  const onUp = (e) => {
+    if (!tRef.current) return;
+    const dx = e.clientX - tRef.current[0], dy = e.clientY - tRef.current[1]; tRef.current = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "R" : "L") : (dy > 0 ? "D" : "U"));
+  };
+  const TC = { 2: ["#F7F1E4", C.ink], 4: ["#F0E2C4", C.ink], 8: ["#F5B87A", "#fff"], 16: ["#F09A5C", "#fff"], 32: ["#EE7F55", "#fff"], 64: ["#E85F3B", "#fff"], 128: ["#F2D26B", "#fff"], 256: ["#F0C94F", "#fff"], 512: ["#EEC043", "#fff"], 1024: ["#ECB72F", "#fff"], 2048: ["#F5A623", "#fff"] };
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>2048</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: left <= 8 ? C.coral : C.muted, background: C.surf, padding: "4px 10px", borderRadius: 20 }}>{left} movs</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Desliza (o usa las flechas) para unir iguales. {MOVES} movimientos.</div>
+      <div style={{ textAlign: "center", margin: "8px 0", fontFamily: mono, fontSize: 28, fontWeight: 500, color: C.coral }}>{score}</div>
+      <div onPointerDown={onDown} onPointerUp={onUp} style={{ position: "relative", width: 300, margin: "0 auto", maxWidth: "100%", borderRadius: 18, background: "rgba(42,18,24,.12)", padding: 8, touchAction: "none", userSelect: "none", boxSizing: "border-box" }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${N},1fr)`, gap: 8 }}>
+          {grid.map((row, r) => row.map((v, c) => (
+            <div key={r + "-" + c} style={{ height: 62, borderRadius: 10, display: "grid", placeItems: "center", background: v ? (TC[v] || TC[2048])[0] : "rgba(255,255,255,.45)", color: v ? (TC[v] || TC[2048])[1] : "transparent", fontFamily: display, fontWeight: 800, fontSize: v >= 1024 ? 19 : v >= 128 ? 23 : 27 }}>{v || ""}</div>
+          )))}
+        </div>
+        {over && <div style={{ position: "absolute", inset: 0, borderRadius: 18, display: "grid", placeItems: "center", background: "rgba(244,236,221,.78)", fontFamily: display, fontWeight: 800, fontSize: 24, color: C.ink }}>¡{score} puntos!</div>}
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 12 }}>
+        {[["L", "←"], ["U", "↑"], ["D", "↓"], ["R", "→"]].map(([d, l]) => (
+          <button key={d} onClick={() => move(d)} style={{ width: 52, height: 44, border: `1px solid ${C.line}`, borderRadius: 12, background: C.surf, fontSize: 20, color: C.ink, cursor: "pointer" }}>{l}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- JUEGO: Burbujas — fabricado desde referencia (bubble shooter) ---------- */
+function BubbleGame({ seed, onFinish }) {
+  const COLS = 9, CS = 34, W = COLS * CS + 17, H = 396, PAD = 6, ROWS0 = 5, MAXROW = 9, SHOTS = 25;
+  const COLORS = ["#FF6F5E", "#2FBF71", "#5B6FE8", "#F5A623"];
+  const rng = useRef(mulberry32(seed != null ? seed + 51 : Math.floor(Math.random() * 1e9)));
+  const [cells, setCells] = useState(() => { const m = {}; for (let r = 0; r < ROWS0; r++) for (let c = 0; c < (r % 2 ? COLS - 1 : COLS); c++) m[r + "," + c] = Math.floor(rng.current() * 4); return m; });
+  const [queue] = useState(() => Array.from({ length: SHOTS }, () => Math.floor(rng.current() * 4)));
+  const [shot, setShot] = useState(0);
+  const [score, setScore] = useState(0);
+  const [ball, setBall] = useState(null);
+  const [fx, setFx] = useState([]);
+  const [over, setOver] = useState(false);
+  const cellsR = useRef(null), scR = useRef(0), endR = useRef(false), rafR = useRef(null), bR = useRef(null), shotR = useRef(0), fid = useRef(0);
+  cellsR.current = cells; scR.current = score; shotR.current = shot;
+  const px = (r, c) => PAD + c * CS + (r % 2) * (CS / 2) + CS / 2;
+  const py = (r) => PAD + r * (CS * 0.87) + CS / 2;
+  const nbs = (r, c) => (r % 2 ? [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]] : [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]]).map(([dr, dc]) => [r + dr, c + dc]);
+  const finish = (s) => { if (endR.current) return; endR.current = true; setOver(true); if (rafR.current) cancelAnimationFrame(rafR.current); setTimeout(() => onFinish(s), 1100); };
+  const settle = (r0, c0, col) => {
+    let m = { ...cellsR.current, [r0 + "," + c0]: col };
+    const same = new Set([r0 + "," + c0]); const st = [[r0, c0]];
+    while (st.length) { const [r, c] = st.pop(); nbs(r, c).forEach(([nr, nc]) => { const k = nr + "," + nc; if (!same.has(k) && m[k] === col) { same.add(k); st.push([nr, nc]); } }); }
+    let gained = 0; const effects = [];
+    if (same.size >= 3) {
+      same.forEach((k) => { const [r, c] = k.split(",").map(Number); effects.push({ id: fid.current++, x: px(r, c), y: py(r), col: m[k], kind: "pop" }); delete m[k]; gained += 10; });
+      const keep = new Set(); const q = [];
+      Object.keys(m).forEach((k) => { if (k.startsWith("0,")) { keep.add(k); q.push(k.split(",").map(Number)); } });
+      while (q.length) { const [r, c] = q.pop(); nbs(r, c).forEach(([nr, nc]) => { const k = nr + "," + nc; if (m[k] != null && !keep.has(k)) { keep.add(k); q.push([nr, nc]); } }); }
+      Object.keys(m).forEach((k) => { if (!keep.has(k)) { const [r, c] = k.split(",").map(Number); effects.push({ id: fid.current++, x: px(r, c), y: py(r), col: m[k], kind: "drop" }); delete m[k]; gained += 15; } });
+    }
+    setCells(m);
+    if (effects.length) { setFx((f) => [...f, ...effects]); setTimeout(() => setFx((f) => f.filter((e) => !effects.some((x) => x.id === e.id))), 720); }
+    if (gained) setScore((v) => v + gained);
+    const total = scR.current + gained;
+    if (Object.keys(m).length === 0) { finish(total + 80); return; }
+    if (Object.keys(m).some((k) => Number(k.split(",")[0]) >= MAXROW)) { finish(total); return; }
+    if (shotR.current + 1 >= SHOTS) { finish(total); return; }
+    setShot((s) => s + 1);
+  };
+  const snapAndSettle = (bx, by, col) => {
+    let best = null, bd = 1e9;
+    for (let r = 0; r <= MAXROW; r++) for (let c = 0; c < (r % 2 ? COLS - 1 : COLS); c++) {
+      if (cellsR.current[r + "," + c] != null) continue;
+      const d = (px(r, c) - bx) ** 2 + (py(r) - by) ** 2;
+      if (d < bd) { bd = d; best = [r, c]; }
+    }
+    setBall(null); bR.current = null;
+    if (best) settle(best[0], best[1], col); else finish(scR.current);
+  };
+  const step = (t) => {
+    const b = bR.current; if (!b) return;
+    if (b.lt == null) b.lt = t;
+    const dt = Math.min(0.03, (t - b.lt) / 1000); b.lt = t;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (b.x < PAD + CS / 2) { b.x = PAD + CS / 2; b.vx = -b.vx; }
+    if (b.x > W - PAD - CS / 2) { b.x = W - PAD - CS / 2; b.vx = -b.vx; }
+    let hit = b.y <= PAD + CS / 2;
+    if (!hit) { for (const k of Object.keys(cellsR.current)) { const [r, c] = k.split(",").map(Number); if ((px(r, c) - b.x) ** 2 + (py(r) - b.y) ** 2 < (CS * 0.82) ** 2) { hit = true; break; } } }
+    if (hit) { snapAndSettle(b.x, b.y, b.col); return; }
+    setBall({ x: b.x, y: b.y, col: b.col });
+    rafR.current = requestAnimationFrame(step);
+  };
+  const shoot = (e) => {
+    if (endR.current || bR.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const tx = e.clientX - rect.left, ty = e.clientY - rect.top;
+    const sx = W / 2, sy = H - 26;
+    const dx = tx - sx, dy = ty - sy;
+    if (dy > -20) return;
+    const L = Math.sqrt(dx * dx + dy * dy), sp = 620;
+    bR.current = { x: sx, y: sy, vx: (dx / L) * sp, vy: (dy / L) * sp, col: queue[shotR.current], lt: null };
+    setBall({ x: sx, y: sy, col: bR.current.col });
+    rafR.current = requestAnimationFrame(step);
+  };
+  useEffect(() => () => { if (rafR.current) cancelAnimationFrame(rafR.current); }, []);
+  const cur = queue[shot], nxt = queue[shot + 1];
+  const bub = (x, y, col, size) => ({ position: "absolute", left: x - size / 2, top: y - size / 2, width: size, height: size, borderRadius: "50%", background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,.75), ${COLORS[col]} 55%)`, border: "1px solid rgba(0,0,0,.12)" });
+  return (
+    <div style={{ padding: "16px 16px 24px", color: C.ink }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: display, fontWeight: 800, fontSize: 24 }}>Burbujas</span>
+        <span style={{ fontFamily: mono, fontSize: 13, color: C.muted, background: C.surf, padding: "4px 10px", borderRadius: 20 }}>🫧 {SHOTS - shot}</span>
+      </div>
+      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginTop: 2 }}>Toca a dónde disparar (rebota en las paredes). Junta 3 del mismo color.</div>
+      <div style={{ textAlign: "center", margin: "8px 0", fontFamily: mono, fontSize: 28, fontWeight: 500, color: C.coral }}>{score}</div>
+      <div onClick={shoot} style={{ position: "relative", width: W, height: H, margin: "0 auto", maxWidth: "100%", borderRadius: 18, background: "linear-gradient(180deg,#FBF4E6,#EFE4CF)", border: `1px solid ${C.line}`, overflow: "hidden", cursor: "crosshair" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, top: PAD + MAXROW * CS * 0.87, borderTop: "2px dashed rgba(216,80,63,.4)" }} />
+        {Object.entries(cells).map(([k, col]) => { const [r, c] = k.split(",").map(Number); return <div key={k} style={bub(px(r, c), py(r), col, CS - 4)} />; })}
+        {fx.map((e) => <div key={"fx" + e.id} style={{ ...bub(e.x, e.y, e.col, CS - 4), animation: e.kind === "pop" ? "bpop .35s forwards" : "isofall .7s ease-in forwards", pointerEvents: "none" }} />)}
+        {ball && <div style={bub(ball.x, ball.y, ball.col, CS - 4)} />}
+        {!over && !ball && cur != null && (
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 8, display: "flex", justifyContent: "center", alignItems: "center", gap: 10, pointerEvents: "none" }}>
+            <div style={{ ...bub(0, 0, cur, CS), position: "static", border: "2px solid #fff", boxShadow: "0 3px 8px rgba(42,18,24,.25)" }} />
+            {nxt != null && <div style={{ width: 20, height: 20, borderRadius: "50%", background: COLORS[nxt], opacity: .7 }} />}
+          </div>
+        )}
+        {over && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(244,236,221,.72)", fontFamily: display, fontWeight: 800, fontSize: 24, color: C.ink }}>¡{score} puntos!</div>}
+      </div>
+      <div style={{ textAlign: "center", fontFamily: mono, fontSize: 11, color: C.muted, marginTop: 10 }}>{seed != null ? "seed diario · mismo tablero para el grupo" : "tablero aleatorio (modo QA)"}</div>
+    </div>
+  );
+}
+
+/* ---------- Crono universal: barra + bonus por velocidad ---------- */
+const TIMED = { trivia: 50, acertijos: 60, truefalse: 35, math: 45, anagram: 75, oddone: 45, memoria: 70, ordenar: 80, tornillos: 60, flechas: 90 };
+function Timed({ seconds, onFinish, render }) {
+  const [secs, setSecs] = useState(0);
+  const [done, setDone] = useState(null);
+  const sR = useRef(0), endR = useRef(false);
+  useEffect(() => {
+    const iv = setInterval(() => setSecs((t) => { const n = t + 1; sR.current = n; return n; }), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  const wrapped = (score) => {
+    if (endR.current) return;
+    endR.current = true;
+    const el = sR.current;
+    const bonus = Math.max(0, seconds - el) * 2;
+    setDone({ bonus, el });
+    setTimeout(() => onFinish(score + bonus, el), bonus > 0 ? 1000 : 500);
+  };
+  const overPar = secs >= seconds;
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "10px 16px 0" }}>
+        <span style={{ fontFamily: mono, fontSize: 11, color: C.muted }}>bonus hasta {seconds}s</span>
+        <span style={{ fontFamily: mono, fontSize: 16, fontWeight: 700, color: overPar ? C.coralD : C.ink, background: overPar ? "rgba(216,80,63,.12)" : C.surf, padding: "4px 12px", borderRadius: 20 }}>⏱ {secs}s</span>
+      </div>
+      {render(wrapped)}
+      {done && (
+        <div style={{ position: "absolute", top: "42%", left: "50%", transform: "translate(-50%,-50%)", background: C.ink, color: "#fff", fontFamily: display, fontWeight: 800, fontSize: 17, padding: "10px 18px", borderRadius: 16, animation: "pop .3s", zIndex: 40, whiteSpace: "nowrap" }}>⏱ {done.el}s{done.bonus > 0 ? ` · Bonus +${done.bonus}` : " · sin bonus"}</div>
+      )}
+    </div>
+  );
+}
+
+function Game({ gameType, themeData, seed, onFinish }) {
+  const td = themeData || THEMES.classic;
+  const key = gameType === "words" ? "anagram" : gameType;
+  const questions = useMemo(() => (key === "math" ? makeMath() : key === "acertijos" ? (td.riddles || RIDDLES) : (td.trivia || TRIVIA)), [key, td]);
+  const inner = (f) => {
+    if (key === "flechas") return <ArrowGame seed={seed} color={td.blockColor} onFinish={f} />;
+    if (key === "tornillos") return <ScrewGame seed={seed} onFinish={f} />;
+    if (key === "merge") return <MergeGame seed={seed} onFinish={f} />;
+    if (key === "burbujas") return <BubbleGame seed={seed} onFinish={f} />;
+    if (key === "stack") return <StackGame seed={seed} onFinish={f} />;
+    if (key === "anagram") return <AnagramGame words={td.words} onFinish={f} />;
+    if (key === "oddone") return <OddOneGame pairs={td.oddPairs} onFinish={f} />;
+    if (key === "truefalse") return <TrueFalseGame onFinish={f} />;
+    if (key === "bloques") return <BlockGame color={td.blockColor} onFinish={f} />;
+    if (key === "ordenar") return <SortGame onFinish={f} />;
+    if (key === "memoria") return <MemoryGame emojis={td.mem} onFinish={f} />;
+    if (key === "arena") return <ArenaGame dotEmoji={td.arenaEmoji} onFinish={f} />;
+    if (key === "volar") return <FlappyGame onFinish={f} />;
+    if (key === "cazatesoros") return <WhackGame onFinish={f} />;
+    if (key === "asteroides") return <FallGame onFinish={f} />;
+    return <QuizGame gameType={key} questions={questions} onFinish={f} />;
+  };
+  const t = TIMED[key];
+  if (t) return <Timed seconds={t} onFinish={onFinish} render={inner} />;
+  return inner(onFinish);
+}
+
+/* ---------- Regalo diario ---------- */
+function RewardBox({ onClaim }) {
+  const [phase, setPhase] = useState("closed");
+  const [reward, setReward] = useState(null);
+  const open = () => { if (phase !== "closed") return; setPhase("opening"); setTimeout(() => { const r = rollReward(); setReward(r); setPhase("open"); onClaim(r); }, 1000); };
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: 18, marginBottom: 14, textAlign: "center", boxShadow: "0 4px 14px rgba(42,18,24,.06)" }}>
+      <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>regalo de hoy</div>
+      {phase !== "open" && (<>
+        <div onClick={open} style={{ fontSize: 64, margin: "8px 0 4px", cursor: phase === "closed" ? "pointer" : "default", animation: phase === "opening" ? "spin .5s linear 2" : "floaty 2.2s ease-in-out infinite" }}>🎁</div>
+        <div style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: C.ink }}>{phase === "opening" ? "Abriendo…" : "Toca para abrir"}</div>
+        <div style={{ fontFamily: body, fontSize: 12, color: C.muted, marginTop: 2 }}>Un regalo al día por jugar.</div>
+      </>)}
+      {phase === "open" && reward && (
+        <div style={{ animation: "pop .4s", position: "relative", overflow: "hidden", borderRadius: 14, marginTop: 8, padding: "14px 10px", background: C.bg2, border: `1px solid ${C.line}` }}>
+          <div style={{ position: "absolute", top: 0, bottom: 0, width: 70, background: "linear-gradient(90deg,transparent,rgba(245,166,35,.5),transparent)", animation: "shine 1.3s ease-in-out infinite" }} />
+          <div style={{ fontSize: 48 }}>{reward.emoji}</div>
+          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 19, color: C.ink }}>{reward.label}</div>
+          <div style={{ fontFamily: body, fontSize: 12, color: C.ink2, marginTop: 2 }}>{reward.type === "coins" ? "Para la tienda de temas" : "Desbloqueado para tu perfil"}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- APP ---------------- */
+function App() {
+  const [screen, setScreen] = useState("groups");
+  const [tab, setTab] = useState("chat");
+  const [groups, setGroups] = useState([
+    { id: "fam", name: "Familia 👨‍👩‍👧", cat: "cultura", streak: 12, rank: 3, picante: false },
+    { id: "insti", name: "Amigos del insti", cat: "palabras", streak: 5, rank: 8, picante: true },
+  ]);
+  const [current, setCurrent] = useState(null);
+  const [players, setPlayers] = useState([
+    { id: "leo", name: "Leo", emoji: "🦉", score: 168, played: 12, won: 5, flame: 33, delta: 0, admin: true },
+    { id: "mara", name: "Mara", emoji: "🦊", score: 135, played: 11, won: 1, flame: 32, delta: 1 },
+    { id: "vera", name: "Vera", emoji: "🐸", score: 90, played: 11, won: 0, flame: 32, delta: -1 },
+    { id: "bruno", name: "Bruno", emoji: "🐻", score: 45, played: 11, won: 1, flame: 32, delta: 2 },
+    { id: "tono", name: "Toño", emoji: "🐙", score: null, played: 8, won: 0, flame: 5, delta: -3 },
+    { id: "you", name: "Tú", emoji: "⭐", score: null, played: 11, won: 1, flame: 32, delta: 4, you: true },
+  ]);
+  const [attempts, setAttempts] = useState(2);
+  const [coins, setCoins] = useState(120);
+  const [played, setPlayed] = useState(false);
+  const [newBadge, setNewBadge] = useState(null);
+  const [shareBadge, setShareBadge] = useState(null);
+  const [incoming, setIncoming] = useState(null);
+  const [lastPassed, setLastPassed] = useState(null);
+  const [lastSecs, setLastSecs] = useState(null);
+  const welcomed = useRef(false);
+  const [share, setShare] = useState(false);
+  const [hub, setHub] = useState(false);
+  const [hubTarget, setHubTarget] = useState("leo");
+  const [settings, setSettings] = useState(false);
+  const [reactMode, setReactMode] = useState("full");
+  const [sound, setSound] = useState(true);
+  const [notif, setNotif] = useState(true);
+  const [theme, setTheme] = useState("classic");
+  const [ownedThemes, setOwnedThemes] = useState(["classic"]);
+  const [store, setStore] = useState(false);
+  const [playOverride, setPlayOverride] = useState(null);
+  const [sabThrows, setSabThrows] = useState(2);
+  const [sabIncoming, setSabIncoming] = useState(null);
+  const [sabWarn, setSabWarn] = useState(false);
+  const [splats, setSplats] = useState([]);
+  const [sabMarks, setSabMarks] = useState({});
+  useEffect(() => {
+    if (screen === "playing" && sabIncoming && !playOverride && current && !current.public) {
+      const t1 = setTimeout(() => setSabWarn(true), 2400);
+      const t2 = setTimeout(() => { setSabWarn(false); setSplats([{ id: 1, x: 12, y: 18, taps: 2 }, { id: 2, x: 50, y: 42, taps: 2 }, { id: 3, x: 24, y: 62, taps: 2 }]); }, 3400);
+      const t3 = setTimeout(() => setSplats([]), 6600);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [screen, sabIncoming]); // eslint-disable-line
+  const cleanSplat = (id) => setSplats((ss) => ss.map((s) => (s.id === id ? { ...s, taps: s.taps - 1 } : s)).filter((s) => s.taps > 0));
+  const throwSab = (p) => {
+    if (sabThrows <= 0) { flash("Sin tiros hoy 🍅"); return; }
+    if (sabMarks[p.id]) { flash("Ya le ha caído hoy (máx. 1)"); return; }
+    setSabThrows((t) => t - 1);
+    setSabMarks((m) => ({ ...m, [p.id]: true }));
+    addChat({ who: "Tú", text: `🍅 lanzaste un tomate a ${p.name} — le caerá en su próxima partida`, time: now() });
+    flash(`🍅 Volando hacia ${p.name}…`);
+  };
+  const togglePicante = () => {
+    const on = !current.picante;
+    setGroups((gs) => gs.map((g) => (g.id === current.id ? { ...g, picante: on } : g)));
+    setCurrent((c) => ({ ...c, picante: on }));
+    flash(on ? "🌶️ Modo Picante ON · solo este grupo" : "Modo Picante OFF");
+  };
+  const LEAGUE = [
+    { name: "Los Number Ones 🇪🇸", pts: 9140 }, { name: "Quiz Wizards 🇬🇧", pts: 8830 }, { name: "Nonna Squad 🇮🇹", pts: 8615 },
+    { name: "Beach Brains 🇧🇷", pts: 8260 }, { name: "Kaffeeklatsch 🇩🇪", pts: 7905 }, { name: "Les Copains 🇫🇷", pts: 7480 },
+    { name: "Sakura Minds 🇯🇵", pts: 7120 }, { name: "Mumbai Masters 🇮🇳", pts: 6870 }, { name: "Cactus Club 🇲🇽", pts: 6540 },
+  ];
+  const [qaGame, setQaGame] = useState(null);
+  const [qaTheme, setQaTheme] = useState("classic");
+  const [qaScores, setQaScores] = useState({});
+  const [qaLog, setQaLog] = useState([]);
+  const [playSheet, setPlaySheet] = useState(false);
+  const [newGroup, setNewGroup] = useState(false);
+  const [ngName, setNgName] = useState("");
+  const [ngCat, setNgCat] = useState("cultura");
+  const [homeTab, setHomeTab] = useState("friends");
+  const [newRoom, setNewRoom] = useState(false);
+  const [nrName, setNrName] = useState("");
+  const [nrCat, setNrCat] = useState("cultura");
+  const [publicRooms, setPublicRooms] = useState([
+    { id: "r1", name: "Trivia Nights", cat: "cultura", host: "Kenji", flag: "🇯🇵", live: 47, players: [{ name: "Kenji", flag: "🇯🇵", score: 180 }, { name: "Amara", flag: "🇳🇬", score: 155 }, { name: "Sofía", flag: "🇧🇷", score: 140 }, { name: "Liam", flag: "🇬🇧", score: 110 }, { name: "Priya", flag: "🇮🇳", score: 95 }, { name: "Tú", flag: "🏠", score: null, you: true }] },
+    { id: "r2", name: "Word Masters", cat: "palabras", host: "Amara", flag: "🇳🇬", live: 23, players: [{ name: "Amara", flag: "🇳🇬", score: 200 }, { name: "Tom", flag: "🇺🇸", score: 160 }, { name: "Yuki", flag: "🇯🇵", score: 130 }, { name: "Tú", flag: "🏠", score: null, you: true }] },
+    { id: "r3", name: "Quick Maths", cat: "rapidez", host: "Sofía", flag: "🇧🇷", live: 88, players: [{ name: "Sofía", flag: "🇧🇷", score: 175 }, { name: "Wei", flag: "🇨🇳", score: 165 }, { name: "Nora", flag: "🇩🇪", score: 150 }, { name: "Tú", flag: "🏠", score: null, you: true }] },
+    { id: "r4", name: "Puzzle Lovers", cat: "ingenio", host: "Liam", flag: "🇬🇧", live: 15, players: [{ name: "Liam", flag: "🇬🇧", score: 145 }, { name: "Inés", flag: "🇫🇷", score: 120 }, { name: "Tú", flag: "🏠", score: null, you: true }] },
+    { id: "r5", name: "Dot Arena", cat: "arena", host: "Wei", flag: "🇨🇳", live: 132, players: [{ name: "Wei", flag: "🇨🇳", score: 210 }, { name: "Ravi", flag: "🇮🇳", score: 180 }, { name: "Mia", flag: "🇺🇸", score: 150 }, { name: "Tú", flag: "🏠", score: null, you: true }] },
+  ]);
+  const [badges, setBadges] = useState([
+    { id: "remon", label: "Remontada", emoji: "🚀", got: false },
+    { id: "king", label: "Primer puesto", emoji: "👑", got: false },
+  ]);
+  const [chat, setChat] = useState([
+    { who: "Leo", type: "score", pts: 168, time: "09:05", top: true },
+    { who: "Mara", type: "score", pts: 135, time: "09:13", top: true },
+    { who: "Tú", text: "hoy os gano seguro 😄", time: "09:20" },
+    { who: "Vera", type: "score", pts: 90, time: "09:31" },
+  ]);
+  const chatRef = useRef(null);
+  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [chat, tab, screen]);
+
+  const byScore = [...players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  const podium = byScore.slice(0, 3);
+  const best = podium[0];
+  const standings = [...players].sort((a, b) => b.flame - a.flame);
+  const seasonLeader = standings[0];
+  const yourRankToday = byScore.findIndex((p) => p.you) + 1;
+  const now = () => new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  const addChat = (m) => setChat((c) => [...c, m]);
+  const [progress, setProgress] = useState({});
+  const openGroup = (g) => { setCurrent(g); const pr = progress[g.id] || { attempts: 2, played: false }; setAttempts(pr.attempts); setPlayed(pr.played); setScreen("group"); setTab("chat"); };
+
+  const showReact = (obj) => { setIncoming(obj); setTimeout(() => setIncoming(null), 1700); };
+  const receiveReaction = (from) => {
+    if (!from || reactMode === "off") return;
+    const r = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+    if (reactMode === "full") showReact({ from: { name: from.name, emoji: from.emoji }, r, label: `${from.name} ${r.verb}` });
+    addChat({ who: from.name, text: `${r.emoji} ${r.verb}`, time: now() });
+  };
+  const sendReaction = (target, r) => {
+    showReact({ mine: true, from: { name: target.name, emoji: target.emoji }, r, label: `${r.emoji} ¡${r.name} para ${target.name}!` });
+    addChat({ who: "Tú", text: `${r.emoji} ${r.tverb} ${target.name}`, time: now() });
+    if (!target.you && Math.random() < 0.5) setTimeout(() => receiveReaction(target), 1300);
+  };
+  const reactAll = (r) => {
+    addChat({ who: "Tú", text: `${r.emoji} ${r.name} para todo el grupo`, time: now() });
+    showReact({ mine: true, from: { name: "todos", emoji: "👥" }, r, label: `${r.emoji} ¡${r.name} para todos!` });
+    setTimeout(() => receiveReaction(standings.filter((p) => !p.you)[0]), 1400);
+  };
+
+  useEffect(() => {
+    if (screen === "group" && current && !welcomed.current) {
+      welcomed.current = true;
+      const t = setTimeout(() => receiveReaction(players.find((p) => p.id === "leo")), 1300);
+      return () => clearTimeout(t);
+    }
+  }, [screen, current]); // eslint-disable-line
+
+  const finishGame = (score, secs) => {
+    if (current && current.public) { finishPublic(score, secs); return; }
+    setLastSecs(secs != null ? secs : null);
+    const me = players.find((p) => p.you);
+    const newScore = me.score == null ? score : Math.max(me.score, score);
+    const np = players.map((p) => (p.you ? { ...p, score: newScore } : p));
+    setPlayers(np);
+    const passed = players.filter((p) => !p.you && p.score != null && p.score < score).sort((a, b) => b.score - a.score);
+    setLastPassed(passed[0] || players.find((p) => p.id === "leo"));
+    setAttempts((a) => a - 1);
+    setPlayed(true);
+    setProgress((pp) => ({ ...pp, [current.id]: { attempts: attempts - 1, played: true } }));
+    if (sabIncoming) {
+      const from = sabIncoming;
+      setSabIncoming(null); setSplats([]); setSabWarn(false);
+      setCoins((g) => g + 15); setSabThrows((t) => t + 1);
+      setSabMarks((m) => ({ ...m, you: true }));
+      addChat({ who: "Tú", text: `🍅 ${from} me metió un tomatazo en plena partida 😤`, time: now() });
+      setTimeout(() => flash("Te cayó un 🍅 · +15 🪙 y tiro de revancha"), 1300);
+    }
+    addChat({ who: "Tú", type: "score", pts: score, secs, time: now(), top: score >= 120 });
+    const ns = [...np].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    const rank = ns.findIndex((p) => p.you) + 1;
+    const reward = rank === 1 ? 50 : 25;
+    setCoins((g) => g + reward);
+    setTimeout(() => setToastReward(reward), 500);
+    let bId = rank === 1 ? "king" : null;
+    if (bId && !badges.find((b) => b.id === bId).got) {
+      setBadges((bs) => bs.map((b) => (b.id === bId ? { ...b, got: true } : b)));
+      setTimeout(() => setNewBadge(badges.find((b) => b.id === bId)), 1100);
+    }
+    setScreen("results");
+  };
+  const [toastReward, setToastReward] = useState(null);
+  useEffect(() => { if (toastReward != null) { const t = setTimeout(() => setToastReward(null), 1700); return () => clearTimeout(t); } }, [toastReward]);
+
+  const claimReward = (r) => { if (r.type === "coins") setCoins((g) => g + r.amount); };
+  const shareBadgeToChat = (b) => addChat({ who: "Tú", type: "badge", badge: b, time: now() });
+  const createGroup = () => { if (!ngName.trim()) return; const g = { id: "g" + Date.now(), name: ngName.trim(), cat: ngCat, streak: 0, rank: 1 }; setGroups((gs) => [g, ...gs]); setNewGroup(false); setNgName(""); openGroup(g); };
+  const gt = current ? todaysGame(current.cat) : "trivia";
+  const themeEmoji = theme !== "classic" ? THEMES[theme].emoji : null;
+  const joinRoom = (r) => { setCurrent({ ...r, public: true }); setScreen("room"); };
+  const createRoom = () => { if (!nrName.trim()) return; const r = { id: "r" + Date.now(), name: nrName.trim(), cat: nrCat, host: "Tú", flag: "🏠", live: 1, players: [{ name: "Tú", flag: "🏠", score: null, you: true }] }; setPublicRooms((rs) => [r, ...rs]); setNewRoom(false); setNrName(""); joinRoom(r); };
+  const finishPublic = (score, secs) => {
+    const upd = (list) => list.map((p) => (p.you ? { ...p, score: Math.max(p.score || 0, score) } : p));
+    setCurrent((c) => ({ ...c, players: upd(c.players) }));
+    setPublicRooms((rs) => rs.map((r) => (r.id === current.id ? { ...r, players: upd(r.players) } : r)));
+    const sorted = [...upd(current.players)].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    setScreen("room");
+    flash(`Hiciste ${score} pts${secs != null ? ` en ${secs}s` : ""} · #${sorted.findIndex((p) => p.you) + 1} en la mesa 🌍`);
+  };
+  const roomReact = (r) => showReact({ mine: true, from: { name: "mesa", emoji: "🌍" }, r, label: `${r.emoji} ¡${r.name}!` });
+  const finishExclusive = (score) => { const reward = 20; setCoins((c) => c + reward); setPlayOverride(null); setScreen("group"); setTimeout(() => flash(`Hiciste ${score} · +${reward} 🪙`), 200); };
+  const qaFinish = (score, secs) => { const g = qaGame; setQaScores((s) => ({ ...s, [g]: score })); setQaLog((l) => [{ g, score, secs, th: qaTheme, t: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) }, ...l].slice(0, 12)); setQaGame(null); setScreen("qa"); setTimeout(() => flash(`${GINFO[g].name}: ${score} pts${secs != null ? ` · ${secs}s` : ""}`), 150); };
+  const qaCoins = () => { setCoins((c) => c + 500); flash("+500 🪙 (QA)"); };
+  const qaUnlockAll = () => { setOwnedThemes(Object.keys(THEMES)); flash("Todos los packs desbloqueados (QA)"); };
+  const qaBadge = () => setNewBadge({ id: "qa", label: "Insignia de prueba", emoji: "🧪" });
+  const qaIncoming = () => receiveReaction(players.find((p) => p.id === "leo"));
+  const qaReset = () => {
+    setCoins(120); setOwnedThemes(["classic"]); setTheme("classic"); setQaScores({}); setQaLog([]);
+    setPlayers((ps) => ps.map((p) => (p.you ? { ...p, score: null } : p)));
+    setAttempts(2); setPlayed(false); setProgress({}); setChat((c) => c.slice(0, 4));
+    flash("Estado reiniciado (QA)");
+  };
+  const hubTargetPlayer = () => players.find((p) => p.id === hubTarget && !p.you) || standings.find((p) => !p.you);
+  const reactFromHub = (r) => { const t = hubTargetPlayer(); if (t) sendReaction(t, r); setHub(false); };
+
+  const shell = { width: "100%", maxWidth: 400, height: 800, background: `linear-gradient(170deg, ${C.bg2}, ${C.bg})`, borderRadius: 34, border: `1px solid ${C.line}`, boxShadow: "0 30px 80px rgba(0,0,0,.45)", overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" };
+  const pill = (col, bgc) => ({ color: col, background: bgc, padding: "5px 10px", borderRadius: 20 });
+
+  return (
+    <div style={{ fontFamily: body, background: C.page, minHeight: "100vh", display: "grid", placeItems: "center", padding: 16 }}>
+      <style>{FONTS}{KF}</style>
+      <div style={shell}>
+
+        {/* ===== GROUPS ===== */}
+        {screen === "groups" && (
+          <>
+            <div style={{ padding: "18px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <div style={{ width: 28, height: 28, background: "#E63946", display: "grid", placeItems: "center", fontSize: 14, color: "#fff", fontFamily: display, fontWeight: 700 }}>■</div>
+                <span style={{ fontFamily: display, fontWeight: 800, fontSize: 25, color: C.ink, letterSpacing: -0.5 }}>Banter</span>
+              </div>
+              <div style={{ display: "flex", gap: 2 }}>
+                <button onClick={() => setScreen("qa")} style={{ background: "none", border: "none", fontSize: 21, cursor: "pointer" }} title="QA">🧪</button>
+                <button onClick={() => setStore(true)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer" }}>🎁</button>
+                <button onClick={() => setSettings(true)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer" }}>⚙️</button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 20px" }}>
+              <div style={{ display: "flex", background: C.surf, borderRadius: 14, padding: 4, marginBottom: 14 }}>
+                {[["friends", "👥 Amigos"], ["world", "🌍 Mundial"]].map(([k, l]) => (
+                  <button key={k} onClick={() => setHomeTab(k)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 11, fontFamily: display, fontWeight: 700, fontSize: 15, cursor: "pointer", background: homeTab === k ? C.coral : "transparent", color: homeTab === k ? "#fff" : C.muted }}>{l}</button>
+                ))}
+              </div>
+              {homeTab === "friends" ? (<>
+              {groups.map((g) => (
+                <div key={g.id} onClick={() => openGroup(g)} style={{ background: C.card, borderRadius: 20, overflow: "hidden", marginBottom: 14, cursor: "pointer", boxShadow: "0 6px 18px rgba(42,18,24,.1)", border: `1px solid ${C.line}` }}>
+                  <GameArt cat={g.cat} h={116} round={0} themeEmoji={themeEmoji}>
+                    <div style={{ position: "absolute", bottom: 10, left: 10, fontFamily: mono, fontSize: 12, color: "#fff", background: "rgba(0,0,0,.4)", padding: "4px 9px", borderRadius: 20 }}>⏳ 21h 40min</div>
+                    <div style={{ position: "absolute", top: "50%", left: 0, right: 0, transform: "translateY(-50%)", display: "flex", justifyContent: "center" }}>
+                      {players.slice(0, 5).map((p, i) => <div key={p.id} style={{ marginLeft: i ? -10 : 0, width: 32, height: 32, borderRadius: "50%", border: "2px solid #fff", background: "#3a2f2a", display: "grid", placeItems: "center", fontSize: 15 }}>{p.emoji}</div>)}
+                    </div>
+                  </GameArt>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px" }}>
+                    <div>
+                      <div style={{ fontFamily: display, fontWeight: 800, fontSize: 19, color: C.ink }}>{g.name}</div>
+                      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2 }}>{CATS[g.cat].emoji} {CATS[g.cat].name}</div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+                      {g.picante && <span style={{ fontFamily: mono, fontSize: 13, color: "#fff", background: "#D8503F", padding: "4px 10px", borderRadius: 20 }}>🌶️</span>}
+                      <span style={{ fontFamily: mono, fontSize: 13, color: C.ink, background: "rgba(255,122,26,.16)", padding: "4px 10px", borderRadius: 20 }}>{g.streak} 🔥</span>
+                      <span style={{ fontFamily: mono, fontSize: 13, color: C.ink, background: "rgba(245,166,35,.2)", padding: "4px 10px", borderRadius: 20 }}>#{g.rank} 🏆</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setNewGroup(true)} style={{ width: "100%", padding: "16px 0", border: "none", borderRadius: 16, fontFamily: display, fontWeight: 800, fontSize: 18, color: "#fff", background: C.coral, boxShadow: `0 6px 0 ${C.coralD}`, cursor: "pointer" }}>＋ Nuevo grupo</button>
+              <div style={{ textAlign: "center", marginTop: 14, fontFamily: body, fontSize: 14, color: C.muted, textDecoration: "underline" }}>o Únete con un código</div>
+              </>) : (<>
+              <div style={{ fontFamily: body, fontSize: 13, color: C.ink2, marginBottom: 12, lineHeight: 1.4 }}>Mesas abiertas: entra a jugar con gente de todo el mundo, o crea la tuya y que se una quien quiera.</div>
+              {publicRooms.map((r) => (
+                <div key={r.id} onClick={() => joinRoom(r)} style={{ background: C.card, borderRadius: 20, overflow: "hidden", marginBottom: 14, cursor: "pointer", boxShadow: "0 6px 18px rgba(42,18,24,.1)", border: `1px solid ${C.line}` }}>
+                  <GameArt cat={r.cat} h={92} round={0}>
+                    <div style={{ position: "absolute", top: 10, left: 10, fontFamily: mono, fontSize: 12, color: "#fff", background: "rgba(0,0,0,.4)", padding: "4px 9px", borderRadius: 20 }}>🌍 {r.live} jugando</div>
+                    <div style={{ position: "absolute", bottom: 10, right: 10, display: "flex" }}>
+                      {r.players.slice(0, 4).map((p, i) => <div key={i} style={{ marginLeft: i ? -8 : 0, width: 26, height: 26, borderRadius: "50%", border: "2px solid #fff", background: "#3a2f2a", display: "grid", placeItems: "center", fontSize: 13 }}>{p.flag}</div>)}
+                    </div>
+                  </GameArt>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px" }}>
+                    <div>
+                      <div style={{ fontFamily: display, fontWeight: 800, fontSize: 18, color: C.ink }}>{r.name}</div>
+                      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2 }}>{CATS[r.cat].emoji} {CATS[r.cat].name} · {r.host} {r.flag}</div>
+                    </div>
+                    <span style={{ fontFamily: display, fontWeight: 800, fontSize: 13, color: "#fff", background: C.teal, padding: "9px 16px", borderRadius: 12 }}>Unirse</span>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setNewRoom(true)} style={{ width: "100%", padding: "16px 0", border: "none", borderRadius: 16, fontFamily: display, fontWeight: 800, fontSize: 18, color: "#fff", background: C.coral, boxShadow: `0 6px 0 ${C.coralD}`, cursor: "pointer" }}>＋ Crear mesa pública</button>
+              </>)}
+            </div>
+          </>
+        )}
+
+        {/* ===== GAME ===== */}
+        {screen === "playing" && current && (
+          <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+            <Game gameType={playOverride || gt} themeData={THEMES[theme]} seed={DAY} onFinish={playOverride ? finishExclusive : finishGame} />
+            {sabWarn && <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", fontSize: 42, animation: "pulse .45s infinite", pointerEvents: "none", filter: "drop-shadow(0 3px 6px rgba(0,0,0,.35))", zIndex: 30 }}>🍅</div>}
+            {splats.map((s) => (
+              <div key={s.id} onClick={() => cleanSplat(s.id)} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: 112, height: 112, cursor: "pointer", animation: "pop .25s", zIndex: 30 }}>
+                <div style={{ width: "100%", height: "100%", borderRadius: "48% 52% 55% 45%/55% 45% 52% 48%", background: "radial-gradient(circle at 40% 35%, rgba(232,59,48,.95), rgba(172,30,24,.93))", boxShadow: "0 4px 14px rgba(120,10,5,.35)", display: "grid", placeItems: "center", opacity: s.taps === 1 ? 0.55 : 0.96, transform: s.taps === 1 ? "scale(.8)" : "none", transition: "opacity .15s, transform .15s" }}>
+                  <span style={{ fontFamily: display, fontWeight: 800, color: "#fff", fontSize: 13 }}>frota ✕{s.taps}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ===== GROUP / RESULTS ===== */}
+        {(screen === "group" || screen === "results") && current && (
+          <>
+            <div style={{ padding: "16px 16px 6px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <button onClick={() => setScreen("groups")} style={{ background: "none", border: "none", color: C.ink, fontSize: 24, cursor: "pointer", lineHeight: 1 }}>‹</button>
+                <div style={{ display: "flex", gap: 7, fontFamily: mono, fontSize: 13, alignItems: "center" }}>
+                  <button onClick={togglePicante} style={{ border: "none", ...pill(current.picante ? "#fff" : C.muted, current.picante ? "#D8503F" : C.surf), fontSize: 13, cursor: "pointer" }}>🌶️{current.picante ? ` ${sabThrows}` : ""}</button>
+                  {theme !== "classic" && <button onClick={() => setStore(true)} style={{ border: "none", ...pill(C.ink2, C.surf), fontSize: 15, cursor: "pointer" }}>{THEMES[theme].emoji}</button>}
+                  <span style={pill(C.goldT, "rgba(245,166,35,.16)")}>🪙 {coins}</span>
+                  <span style={pill(C.tealD, "rgba(42,167,155,.14)")}>#{yourRankToday <= 5 ? yourRankToday : current.rank} 🏆</span>
+                  <button onClick={() => setHub(true)} style={{ border: "none", ...pill(C.coral, "rgba(255,111,94,.14)"), fontSize: 15, cursor: "pointer" }}>😏</button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 12px", position: "relative" }}>
+              {screen === "results" ? (
+                <>
+                  {yourRankToday === 1 && (
+                    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 1 }}>
+                      {Array.from({ length: 16 }).map((_, i) => <span key={i} style={{ position: "absolute", left: `${(i * 6.5) % 100}%`, top: -20, fontSize: 14 + (i % 3) * 6, color: ["#E63946", "#1D5DEC", "#F4C20D"][i % 3], animation: `fall ${1.6 + (i % 5) * .3}s ${(i % 7) * .12}s ease-in infinite` }}>{["●", "■", "▲"][i % 3]}</span>)}
+                    </div>
+                  )}
+                  <div style={{ animation: "slideup .4s", background: yourRankToday === 1 ? C.gold : C.card, color: C.ink, borderRadius: 18, padding: "14px 18px", marginBottom: 14, position: "relative", overflow: "hidden", border: `1px solid ${C.line}`, boxShadow: "0 4px 14px rgba(42,18,24,.07)" }}>
+                    <div style={{ position: "absolute", top: 0, bottom: 0, width: 60, background: "linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent)", animation: "shine 1.6s ease-in-out" }} />
+                    <div style={{ fontFamily: mono, fontSize: 12, color: C.ink2 }}>tu partida · {GINFO[gt].name}{lastSecs != null ? ` · ⏱ ${lastSecs}s` : ""}</div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                      <span style={{ fontFamily: mono, fontWeight: 500, fontSize: 34 }}>{players.find((p) => p.you).score}</span>
+                      <span style={{ fontFamily: display, fontWeight: 800, fontSize: 18 }}>{yourRankToday === 1 ? "👑 ¡1º hoy!" : `#${yourRankToday} hoy`}</span>
+                    </div>
+                    <div style={{ fontFamily: body, fontSize: 13 }}>Te queda{attempts !== 1 ? "n" : ""} {attempts} intento{attempts !== 1 ? "s" : ""} · cuenta tu mejor marca</div>
+                  </div>
+                  <RewardBox onClaim={claimReward} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setShare(true)} style={actBtn("surf")}>📲 Compartir</button>
+                    {attempts > 0 && <button onClick={() => setScreen("playing")} style={actBtn(C.teal, true, C.tealD)}>🔁 Otra vez</button>}
+                    <button onClick={() => { setScreen("group"); setTab("chat"); if (lastPassed) setTimeout(() => receiveReaction(lastPassed), 650); }} style={actBtn(C.coral, true, C.coralD)}>Ver grupo</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign: "center", fontFamily: display, fontWeight: 800, fontSize: 34, color: C.ink, margin: "2px 0 12px", letterSpacing: 0.5 }}>HOY</div>
+                  <div onClick={() => attempts > 0 && setPlaySheet(true)} style={{ cursor: attempts > 0 ? "pointer" : "default", marginBottom: 18 }}>
+                    <GameArt cat={current.cat} h={168} themeEmoji={themeEmoji}>
+                      <div style={{ position: "absolute", top: 10, left: 10, fontFamily: mono, fontSize: 13, color: "#fff", background: "rgba(0,0,0,.4)", padding: "5px 11px", borderRadius: 20 }}># {yourRankToday <= 5 ? yourRankToday : 8}/17</div>
+                      <div style={{ position: "absolute", top: 10, right: 10, fontFamily: mono, fontSize: 13, color: "#fff", background: "rgba(0,0,0,.4)", padding: "5px 11px", borderRadius: 20 }}>⏳ 21h 40min</div>
+                      <div style={{ position: "absolute", bottom: -14, left: "50%", transform: "translateX(-50%)", background: C.card, color: C.ink, fontFamily: display, fontWeight: 800, fontSize: 16, padding: "7px 20px", borderRadius: 20, boxShadow: "0 4px 12px rgba(42,18,24,.2)", whiteSpace: "nowrap", border: `1px solid ${C.line}` }}>{CATS[current.cat].emoji} {GINFO[gt].name.toUpperCase()}</div>
+                    </GameArt>
+                  </div>
+
+                  {theme !== "classic" && THEMES[theme].exclusive && (
+                    <button onClick={() => { setPlayOverride(THEMES[theme].exclusive.id); setScreen("playing"); }} style={{ width: "100%", padding: "13px 0", marginBottom: 16, border: "none", borderRadius: 14, fontFamily: display, fontWeight: 800, fontSize: 15, color: "#fff", background: `linear-gradient(135deg, ${THEMES[theme].accent}, ${THEMES[theme].tint})`, boxShadow: "0 4px 12px rgba(42,18,24,.2)", cursor: "pointer" }}>🎮 Exclusivo del pack: {THEMES[theme].exclusive.name} {THEMES[theme].emoji}</button>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", gap: 12, marginTop: 12, marginBottom: 14 }}>
+                    {[[podium[1], 2], [podium[0], 1], [podium[2], 3]].map(([p, place]) => p && (
+                      <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: place === 1 ? 88 : 74 }}>
+                        <div style={{ position: "relative", width: place === 1 ? 56 : 46, height: place === 1 ? 56 : 46, borderRadius: "50%", background: "#fff", boxShadow: "0 6px 14px rgba(42,18,24,.18)", display: "grid", placeItems: "center", fontSize: place === 1 ? 27 : 22, marginBottom: 6 }}>
+                          {place === 1 && <span style={{ position: "absolute", top: -20, fontSize: 22 }}>👑</span>}
+                          {p.emoji}
+                        </div>
+                        <div style={{ fontFamily: body, fontWeight: 700, fontSize: 12, color: C.ink, lineHeight: 1.1 }}>{p.you ? "Tú" : p.name}</div>
+                        <div style={{ fontFamily: mono, fontSize: 11, color: C.ink2, marginBottom: 6 }}>{p.score} pts</div>
+                        <div style={{ width: "100%", height: PB[place].h, borderRadius: "12px 12px 0 0", background: `linear-gradient(180deg, ${PB[place].c1}, ${PB[place].c2})`, boxShadow: "inset 0 -8px 14px rgba(0,0,0,.16)", display: "flex", justifyContent: "center", paddingTop: 8, color: "#fff", fontFamily: display, fontWeight: 800, fontSize: 26 }}>{place}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {best && (
+                    <div style={{ textAlign: "center", marginBottom: 14 }}>
+                      <div style={{ fontFamily: body, fontSize: 13, color: C.muted }}>🌟 Mejor de hoy 🌟</div>
+                      <div style={{ fontFamily: display, fontWeight: 800, fontSize: 26, color: C.ink, letterSpacing: 0.5 }}>{best.you ? "TÚ" : best.name.toUpperCase()}</div>
+                      <div style={{ fontFamily: body, fontSize: 13, color: C.ink2 }}>{best.score} Puntos</div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", background: C.surf, borderRadius: 14, padding: 4, marginBottom: 12 }}>
+                    {[["chat", "Chat"], ["score", "Puntuación"], ["liga", "Liga"]].map(([k, l]) => (
+                      <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 11, fontFamily: display, fontWeight: 700, fontSize: 15, cursor: "pointer", background: tab === k ? C.coral : "transparent", color: tab === k ? "#fff" : C.muted }}>{l}</button>
+                    ))}
+                  </div>
+
+                  {tab === "liga" ? (
+                    <div style={{ paddingBottom: 4 }}>
+                      <div style={{ background: "linear-gradient(135deg, #B8BFCC, #8E97A8)", borderRadius: 16, padding: "13px 16px", color: "#fff", marginBottom: 10 }}>
+                        <div style={{ fontFamily: display, fontWeight: 800, fontSize: 19 }}>🥈 Liga Plata · Grupos 5-9</div>
+                        <div style={{ fontFamily: mono, fontSize: 12, opacity: 0.9 }}>Jornada 4/7 · suma semanal · quedan 3 días</div>
+                      </div>
+                      {[...LEAGUE, { name: current.name, pts: 8020, you: true }].sort((a, b) => b.pts - a.pts).map((g2, i, arr) => (
+                        <div key={g2.name} style={{ display: "flex", alignItems: "center", gap: 10, background: g2.you ? "rgba(255,111,94,.1)" : C.card, border: g2.you ? `1.5px solid ${C.coral}` : `1px solid ${C.line}`, borderRadius: 14, padding: "9px 12px", marginBottom: 7 }}>
+                          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 13, width: 20, color: i < 3 ? C.basilT : i >= arr.length - 3 ? C.coralD : C.muted }}>{i + 1}</span>
+                          <span style={{ flex: 1, fontFamily: display, fontWeight: 800, fontSize: 14.5, color: C.ink }}>{g2.you ? `${current.name} (tú)` : g2.name}</span>
+                          {i < 3 && <span style={{ fontFamily: mono, fontSize: 10, color: C.basilT }}>▲ sube</span>}
+                          {i >= arr.length - 3 && <span style={{ fontFamily: mono, fontSize: 10, color: C.coralD }}>▼ baja</span>}
+                          <span style={{ fontFamily: mono, fontSize: 13, color: C.ink }}>{g2.pts}</span>
+                        </div>
+                      ))}
+                      <div style={{ fontFamily: body, fontSize: 11, color: C.muted, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>Media del top-5 diario · mín. 60% de participación · seed global · sin sabotaje · los fichajes puntúan al día siguiente</div>
+                    </div>
+                  ) : tab === "chat" ? (
+                    <div ref={chatRef} style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 4 }}>
+                      {chat.map((m, i) => <ChatMsg key={i} m={m} onShareBadge={() => setShareBadge(m.badge)} />)}
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 4 }}>
+                      <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, margin: "2px 2px 6px" }}>{players.length} miembros · temporada 1</div>
+                      {current.picante && <div style={{ fontFamily: body, fontSize: 11, color: C.coralD, margin: "0 2px 8px" }}>🌶️ Picante: solo hacia arriba · {sabThrows} tiros hoy · máx. 1 por víctima · tu mejor intento siempre cuenta</div>}
+                      {standings.map((p) => (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 11, background: p.you ? "rgba(255,111,94,.1)" : C.card, border: p.you ? `1.5px solid ${C.coral}` : `1px solid ${C.line}`, borderRadius: 16, padding: "9px 12px" }}>
+                          <Avatar p={p} size={38} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontFamily: display, fontWeight: 800, fontSize: 16, color: C.ink }}>{p.you ? "Tú" : p.name}</span>
+                              {p.admin && <span style={{ fontFamily: body, fontSize: 10, fontWeight: 700, color: "#fff", background: C.grape, padding: "1px 7px", borderRadius: 10 }}>Admin</span>}
+                            </div>
+                            <div style={{ fontFamily: body, fontSize: 12, color: C.muted }}>{p.played} jugadas · {p.won} ganadas</div>
+                          </div>
+                          {sabMarks[p.id] && <span style={{ fontSize: 15 }} title="Tomatazo hoy">🍅</span>}
+                          {current.picante && !p.you && standings.indexOf(p) < standings.findIndex((q) => q.you) && <button onClick={() => throwSab(p)} style={{ border: "none", background: "rgba(216,80,63,.14)", width: 36, height: 36, borderRadius: 10, fontSize: 16, cursor: "pointer" }} title="Tomatazo">🍅</button>}
+                          {!p.you && <button onClick={() => { setHubTarget(p.id); setHub(true); }} style={{ border: "none", background: "rgba(255,111,94,.12)", color: C.coral, width: 36, height: 36, borderRadius: 10, fontSize: 16, cursor: "pointer" }} title="Chinchar">😏</button>}
+                          {p.id === seasonLeader.id && <span style={{ fontSize: 18 }}>🏆</span>}
+                          {typeof p.delta === "number" && <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 11, padding: "2px 6px", borderRadius: 8, color: p.delta > 0 ? C.basilT : p.delta < 0 ? C.coral : C.muted, background: p.delta > 0 ? "rgba(47,191,113,.14)" : p.delta < 0 ? "rgba(255,111,94,.12)" : C.surf }}>{p.delta > 0 ? `▲${p.delta}` : p.delta < 0 ? `▼${-p.delta}` : "="}</span>}
+                          <span style={{ fontFamily: mono, fontWeight: 500, fontSize: 14, color: C.flame }}>🔥{p.flame}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {screen === "group" && tab === "chat" && (
+              <div style={{ borderTop: `1px solid ${C.line}`, background: C.bg2, padding: "10px 12px", display: "flex", gap: 8, alignItems: "center" }}>
+                <button onClick={() => sendReaction(best.you ? standings[1] : best, REACTIONS[0])} style={{ border: "none", background: "rgba(255,111,94,.12)", color: C.coral, width: 40, height: 40, borderRadius: 12, fontSize: 18, cursor: "pointer" }} title="Chinchar">😏</button>
+                <div style={{ flex: 1, background: C.surf, borderRadius: 20, padding: "10px 14px", fontFamily: body, fontSize: 14, color: C.muted }}>Tu mensaje…</div>
+                <button style={{ border: "none", background: C.surf, color: C.ink2, padding: "8px 10px", borderRadius: 12, fontFamily: mono, fontSize: 12, cursor: "pointer" }}>GIF</button>
+                <button onClick={() => addChat({ who: "Tú", text: "jaja 😄", time: now() })} style={{ border: "none", background: C.coral, color: "#fff", width: 40, height: 40, borderRadius: 12, fontSize: 18, cursor: "pointer" }}>↑</button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ===== QA: LISTA DE JUEGOS ===== */}
+        {screen === "qa" && (
+          <>
+            <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
+              <button onClick={() => setScreen("groups")} style={{ background: "none", border: "none", color: C.ink, fontSize: 24, cursor: "pointer", lineHeight: 1 }}>‹</button>
+              <span style={{ fontFamily: display, fontWeight: 800, fontSize: 20, color: C.ink }}>🧪 QA · Juegos</span>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "6px 16px 20px" }}>
+              <div style={{ fontFamily: mono, fontSize: 11, color: C.muted, margin: "2px 2px 6px" }}>tema/skin para probar contenido</div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+                {Object.entries(THEMES).map(([k, t]) => (
+                  <button key={k} onClick={() => setQaTheme(k)} style={{ flex: "1 0 auto", padding: "8px 10px", borderRadius: 10, border: qaTheme === k ? `2px solid ${C.coral}` : `1px solid ${C.line}`, background: qaTheme === k ? "rgba(255,111,94,.1)" : C.surf, fontFamily: display, fontWeight: 700, fontSize: 12, color: C.ink, cursor: "pointer" }}>{t.emoji} {t.name}</button>
+                ))}
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 2px 8px" }}>Herramientas</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                <button onClick={qaCoins} style={qaBtn()}>🪙 +500 monedas</button>
+                <button onClick={qaUnlockAll} style={qaBtn()}>🔓 Todos los packs</button>
+                <button onClick={qaBadge} style={qaBtn()}>🏅 Probar insignia</button>
+                <button onClick={qaIncoming} style={qaBtn()}>😏 Chinchazo entrante</button>
+                <button onClick={qaReset} style={{ ...qaBtn(), gridColumn: "span 2", background: "rgba(255,111,94,.12)", color: C.coralD, border: `1px solid ${C.coral}` }}>♻️ Reiniciar estado</button>
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 11, color: C.muted, margin: "0 2px 8px" }}>estado: 🪙 {coins} · packs {ownedThemes.length}/{Object.keys(THEMES).length} · tema activo {THEMES[theme].emoji}</div>
+              <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "10px 2px 8px" }}>Juegos por categoría</div>
+              {QA_LIST.map((id) => <QARow key={id} id={id} score={qaScores[id]} onPlay={() => { setQaGame(id); setScreen("qaplay"); }} />)}
+              <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "16px 2px 8px" }}>Exclusivos de pack</div>
+              {QA_EXCL.map((id) => <QARow key={id} id={id} score={qaScores[id]} onPlay={() => { setQaGame(id); setScreen("qaplay"); }} />)}
+              {qaLog.length > 0 && (<>
+                <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "16px 2px 8px" }}>Registro ({qaLog.length})</div>
+                {qaLog.map((e, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: mono, fontSize: 12, color: C.ink2, padding: "6px 4px", borderBottom: `1px solid ${C.line}` }}>
+                    <span style={{ color: C.muted }}>{e.t}</span>
+                    <span style={{ flex: 1 }}>{QA_EMOJI[e.g]} {GINFO[e.g].name} · {THEMES[e.th].emoji}</span>
+                    {e.secs != null && <span style={{ color: C.muted }}>⏱{e.secs}s</span>}
+                    <span style={{ fontWeight: 700, color: C.ink }}>{e.score}</span>
+                  </div>
+                ))}
+              </>)}
+              <div style={{ fontFamily: body, fontSize: 11, color: C.muted, textAlign: "center", marginTop: 14 }}>Modo de pruebas · lanza cualquier juego con el skin elegido.</div>
+            </div>
+          </>
+        )}
+
+        {/* ===== QA: PROBAR JUEGO ===== */}
+        {screen === "qaplay" && qaGame && (
+          <>
+            <div style={{ padding: "14px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <button onClick={() => { setQaGame(null); setScreen("qa"); }} style={{ background: "none", border: "none", color: C.ink, fontSize: 20, cursor: "pointer", fontFamily: display, fontWeight: 700 }}>‹ QA</button>
+              <span style={{ fontFamily: mono, fontSize: 12, color: C.muted }}>{GINFO[qaGame].name} · {THEMES[qaTheme].emoji}</span>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto" }}><Game gameType={qaGame} themeData={THEMES[qaTheme]} onFinish={qaFinish} /></div>
+          </>
+        )}
+
+        {/* ===== SALA PÚBLICA (MUNDIAL) ===== */}
+        {screen === "room" && current && (
+          <>
+            <div style={{ padding: "16px 16px 6px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <button onClick={() => setScreen("groups")} style={{ background: "none", border: "none", color: C.ink, fontSize: 24, cursor: "pointer", lineHeight: 1 }}>‹</button>
+                <div style={{ display: "flex", gap: 7, fontFamily: mono, fontSize: 13, alignItems: "center" }}>
+                  <span style={pill(C.tealD, "rgba(42,167,155,.14)")}>🌍 Mundial</span>
+                  <span style={pill(C.goldT, "rgba(245,166,35,.16)")}>🪙 {coins}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
+              <div style={{ marginBottom: 12 }}>
+                <GameArt cat={current.cat} h={150}>
+                  <div style={{ position: "absolute", top: 10, right: 10, fontFamily: mono, fontSize: 13, color: "#fff", background: "rgba(0,0,0,.4)", padding: "5px 11px", borderRadius: 20 }}>🌍 {current.live} jugando</div>
+                  <div style={{ position: "absolute", bottom: -14, left: "50%", transform: "translateX(-50%)", background: C.card, color: C.ink, fontFamily: display, fontWeight: 800, fontSize: 16, padding: "7px 20px", borderRadius: 20, boxShadow: "0 4px 12px rgba(42,18,24,.2)", whiteSpace: "nowrap", border: `1px solid ${C.line}` }}>{CATS[current.cat].emoji} {GINFO[gt].name.toUpperCase()}</div>
+                </GameArt>
+              </div>
+              <div style={{ textAlign: "center", marginBottom: 12 }}>
+                <div style={{ fontFamily: display, fontWeight: 800, fontSize: 22, color: C.ink }}>{current.name}</div>
+                <div style={{ fontFamily: body, fontSize: 13, color: C.muted }}>anfitrión {current.host} {current.flag} · {CATS[current.cat].name}</div>
+              </div>
+              <button onClick={() => setScreen("playing")} style={{ width: "100%", padding: "15px 0", border: "none", borderRadius: 16, fontFamily: display, fontWeight: 800, fontSize: 18, color: "#fff", background: C.teal, boxShadow: `0 6px 0 ${C.tealD}`, cursor: "pointer", marginBottom: 16 }}>▶ JUGAR</button>
+
+              <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, margin: "2px 2px 8px" }}>clasificación mundial de la mesa</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {[...current.players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1)).map((p, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 11, background: p.you ? "rgba(255,111,94,.1)" : C.card, border: p.you ? `1.5px solid ${C.coral}` : `1px solid ${C.line}`, borderRadius: 14, padding: "9px 12px" }}>
+                    <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 14, color: idx === 0 ? C.goldT : C.muted, width: 20 }}>{idx + 1}</span>
+                    <span style={{ fontSize: 22 }}>{p.flag}</span>
+                    <span style={{ flex: 1, fontFamily: display, fontWeight: 800, fontSize: 15, color: C.ink }}>{p.you ? "Tú" : p.name}{idx === 0 ? " 👑" : ""}</span>
+                    {!p.you && <button onClick={() => roomReact(POS[0])} style={{ border: "none", background: "rgba(255,111,94,.12)", color: C.coral, width: 32, height: 32, borderRadius: 9, fontSize: 14, cursor: "pointer" }} title="Reaccionar">👏</button>}
+                    <span style={{ fontFamily: mono, fontSize: 13, color: p.score == null ? C.muted : C.ink }}>{p.score == null ? "—" : `${p.score}`}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 14 }}>
+                <div style={{ fontFamily: display, fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 8 }}>Reacciones (buen rollo)</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {POS.map((r) => (<button key={r.id} onClick={() => roomReact(r)} style={{ flex: 1, padding: "12px 0", border: `1px solid ${C.line}`, borderRadius: 12, background: C.surf, fontSize: 20, cursor: "pointer" }}>{r.emoji}</button>))}
+                </div>
+                <div style={{ fontFamily: body, fontSize: 11, color: C.muted, marginTop: 10 }}>🛡️ En mesas públicas solo hay reacciones positivas. Puedes reportar o silenciar a cualquiera.</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ===== MODALS ===== */}
+        {newRoom && (
+          <div onClick={() => setNewRoom(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.5)", display: "grid", placeItems: "center", zIndex: 45, padding: 18 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 22, padding: 20, width: "100%", maxWidth: 320 }}>
+              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 22, color: C.ink, marginBottom: 4 }}>Crear mesa pública 🌍</div>
+              <div style={{ fontFamily: body, fontSize: 13, color: C.muted, marginBottom: 12 }}>Cualquiera del mundo podrá unirse a jugar.</div>
+              <input value={nrName} onChange={(e) => setNrName(e.target.value)} placeholder="Nombre de la mesa" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${C.line}`, background: C.surf, color: C.ink, fontFamily: body, fontSize: 15, marginBottom: 14, outline: "none" }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                {Object.entries(CATS).map(([k, g]) => (
+                  <button key={k} onClick={() => setNrCat(k)} style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: nrCat === k ? `2px solid ${C.coral}` : `1px solid ${C.line}`, cursor: "pointer", background: "none" }}>
+                    <GameArt cat={k} h={50} round={0} />
+                    <div style={{ fontFamily: body, fontSize: 12, fontWeight: 600, color: C.ink, padding: "6px 0" }}>{g.emoji} {g.name}</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={createRoom} disabled={!nrName.trim()} style={{ width: "100%", padding: "13px 0", border: "none", borderRadius: 13, fontFamily: display, fontWeight: 800, fontSize: 16, color: "#fff", background: nrName.trim() ? C.coral : C.muted, cursor: nrName.trim() ? "pointer" : "default" }}>Crear y entrar</button>
+            </div>
+          </div>
+        )}
+
+        {playSheet && current && (
+          <div onClick={() => setPlaySheet(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.45)", display: "grid", placeItems: "end stretch", zIndex: 40 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: "24px 22px 28px", textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 4 }}>{CATS[current.cat].emoji}</div>
+              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 24, color: C.ink }}>{GINFO[gt].name}</div>
+              <div style={{ fontFamily: body, fontSize: 14, color: C.ink2, margin: "4px 0 6px" }}>{CATS[current.cat].name} · {GINFO[gt].tag}</div>
+              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 30, color: C.ink, marginTop: 8 }}>{attempts} / 2</div>
+              <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, letterSpacing: 1, marginBottom: 16 }}>INTENTOS · cuenta tu mejor marca</div>
+              <button onClick={() => { setPlaySheet(false); if (current.picante && attempts === 2 && Math.random() < 0.7) { const yi = standings.findIndex((p) => p.you); const below = standings.slice(yi + 1); setSabIncoming(below.length ? below[Math.floor(Math.random() * below.length)].name : "Bruno"); } setScreen("playing"); }} style={{ width: "100%", padding: "16px 0", border: "none", borderRadius: 16, fontFamily: display, fontWeight: 800, fontSize: 20, color: "#fff", background: C.teal, boxShadow: `0 6px 0 ${C.tealD}`, cursor: "pointer" }}>▶ JUGAR</button>
+            </div>
+          </div>
+        )}
+
+        {newGroup && (
+          <div onClick={() => setNewGroup(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.5)", display: "grid", placeItems: "center", zIndex: 45, padding: 18 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 22, padding: 20, width: "100%", maxWidth: 320 }}>
+              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 22, color: C.ink, marginBottom: 4 }}>Nuevo grupo</div>
+              <div style={{ fontFamily: body, fontSize: 13, color: C.muted, marginBottom: 12 }}>Ponle nombre y elige el juego de hoy.</div>
+              <input value={ngName} onChange={(e) => setNgName(e.target.value)} placeholder="Nombre del grupo" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${C.line}`, background: C.surf, color: C.ink, fontFamily: body, fontSize: 15, marginBottom: 14, outline: "none" }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                {Object.entries(CATS).map(([k, g]) => (
+                  <button key={k} onClick={() => setNgCat(k)} style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: ngCat === k ? `2px solid ${C.coral}` : `1px solid ${C.line}`, cursor: "pointer", background: "none" }}>
+                    <GameArt cat={k} h={50} round={0} />
+                    <div style={{ fontFamily: body, fontSize: 12, fontWeight: 600, color: C.ink, padding: "6px 0" }}>{g.emoji} {g.name}</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={createGroup} disabled={!ngName.trim()} style={{ width: "100%", padding: "13px 0", border: "none", borderRadius: 13, fontFamily: display, fontWeight: 800, fontSize: 16, color: "#fff", background: ngName.trim() ? C.coral : C.muted, cursor: ngName.trim() ? "pointer" : "default" }}>Crear grupo</button>
+            </div>
+          </div>
+        )}
+
+        {/* CHINCHAR hub */}
+        {hub && current && (
+          <div onClick={() => setHub(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.5)", display: "grid", placeItems: "end stretch", zIndex: 46 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTop: `1px solid ${C.line}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontFamily: display, fontWeight: 800, fontSize: 20, color: C.ink }}>😏 Chinchar</span>
+                <button onClick={() => setHub(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: 22, cursor: "pointer" }}>✕</button>
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 11, color: C.muted, marginBottom: 7 }}>1 · a quién</div>
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
+                {players.filter((p) => !p.you).map((p) => { const sel = hubTarget === p.id; return (
+                  <button key={p.id} onClick={() => setHubTarget(p.id)} style={{ flex: "0 0 auto", background: "none", border: "none", cursor: "pointer", textAlign: "center" }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, display: "grid", placeItems: "center", fontSize: 25, border: sel ? `2px solid ${C.coral}` : `1px solid ${C.line}`, background: sel ? "rgba(255,111,94,.1)" : C.surf }}>{p.emoji}</div>
+                    <div style={{ fontFamily: body, fontSize: 11, fontWeight: 600, color: sel ? C.coral : C.muted, marginTop: 3 }}>{p.name}</div>
+                  </button>
+                ); })}
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 11, color: C.muted, margin: "8px 0 7px" }}>2 · con qué (toca para enviar)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                {REACTIONS.map((r) => (
+                  <button key={r.id} onClick={() => reactFromHub(r)} style={{ padding: "12px 6px", borderRadius: 14, border: `1px solid ${C.line}`, background: C.surf, cursor: "pointer", textAlign: "center" }}>
+                    <div style={{ fontSize: 30 }}>{r.emoji}</div>
+                    <div style={{ fontFamily: display, fontWeight: 700, fontSize: 12, color: C.ink, marginTop: 4 }}>{r.name}</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => { reactAll(REACTIONS[4]); setHub(false); }} style={{ width: "100%", marginTop: 14, padding: "13px 0", border: "none", borderRadius: 13, fontFamily: display, fontWeight: 800, fontSize: 14, color: "#fff", background: C.coral, boxShadow: `0 4px 0 ${C.coralD}`, cursor: "pointer" }}>🎉 Confeti para todos</button>
+              <div style={{ fontFamily: body, fontSize: 11, color: C.muted, textAlign: "center", marginTop: 8 }}>Todo en buen rollo · gratis e ilimitado</div>
+            </div>
+          </div>
+        )}
+
+        {settings && (
+          <div onClick={() => setSettings(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.5)", display: "grid", placeItems: "end stretch", zIndex: 47 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTop: `1px solid ${C.line}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <span style={{ fontFamily: display, fontWeight: 800, fontSize: 20, color: C.ink }}>⚙️ Ajustes</span>
+                <button onClick={() => setSettings(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: 22, cursor: "pointer" }}>✕</button>
+              </div>
+              <div style={{ fontFamily: display, fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>Recibir chinchazos</div>
+              <div style={{ display: "flex", background: C.surf, borderRadius: 12, padding: 4, marginBottom: 8 }}>
+                {[["full", "Todo"], ["chat", "Solo chat"], ["off", "Off"]].map(([k, l]) => (
+                  <button key={k} onClick={() => setReactMode(k)} style={{ flex: 1, padding: "9px 0", border: "none", borderRadius: 9, fontFamily: display, fontWeight: 700, fontSize: 13, cursor: "pointer", background: reactMode === k ? C.coral : "transparent", color: reactMode === k ? "#fff" : C.muted }}>{l}</button>
+                ))}
+              </div>
+              <div style={{ fontFamily: body, fontSize: 12.5, color: C.muted, marginBottom: 16 }}>{reactMode === "full" ? "Te llegan con animación y al chat." : reactMode === "chat" ? "Sin animación; solo aparecen en el chat." : "No recibes chinchazos. Modo tranquilo."}</div>
+              {[["🔊 Sonidos", sound, setSound], ["🔔 Notificaciones", notif, setNotif]].map(([l, v, set]) => (
+                <div key={l} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderTop: `1px solid ${C.line}` }}>
+                  <span style={{ fontFamily: body, fontWeight: 600, fontSize: 15, color: C.ink }}>{l}</span>
+                  <Toggle on={v} onClick={() => set((x) => !x)} />
+                </div>
+              ))}
+              <div style={{ fontFamily: mono, fontSize: 11, color: C.muted, textAlign: "center", marginTop: 14 }}>Banter · v0.1</div>
+            </div>
+          </div>
+        )}
+
+        {newBadge && (
+          <div onClick={() => setNewBadge(null)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.55)", display: "grid", placeItems: "center", zIndex: 50 }}>
+            <div style={{ background: C.card, borderRadius: 22, padding: "26px 30px", textAlign: "center", animation: "pop .4s", position: "relative", overflow: "hidden", width: 250 }}>
+              <div style={{ position: "absolute", top: 0, bottom: 0, width: 70, background: "linear-gradient(90deg,transparent,rgba(245,166,35,.6),transparent)", animation: "shine 1.4s ease-in-out infinite" }} />
+              <div style={{ fontFamily: mono, fontSize: 12, color: C.coralD }}>¡INSIGNIA!</div>
+              <div style={{ fontSize: 56, margin: "8px 0" }}>{newBadge.emoji}</div>
+              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 22, color: C.ink }}>{newBadge.label}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button onClick={() => { shareBadgeToChat(newBadge); setNewBadge(null); }} style={{ flex: 1, padding: "11px 0", border: `1px solid ${C.line}`, borderRadius: 12, background: C.surf, color: C.ink, fontFamily: display, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💬 Al chat</button>
+                <button onClick={() => { setShareBadge(newBadge); setNewBadge(null); }} style={{ flex: 1, padding: "11px 0", border: "none", borderRadius: 12, background: C.grape, color: "#fff", fontFamily: display, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>📲 Compartir</button>
+              </div>
+              <button onClick={() => setNewBadge(null)} style={{ marginTop: 8, padding: "9px 0", width: "100%", border: "none", borderRadius: 12, background: C.coral, color: "#fff", fontFamily: display, fontWeight: 800, cursor: "pointer" }}>¡Bien!</button>
+            </div>
+          </div>
+        )}
+
+        {store && (
+          <div onClick={() => setStore(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.5)", display: "grid", placeItems: "end stretch", zIndex: 48 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTop: `1px solid ${C.line}`, maxHeight: "88%", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontFamily: display, fontWeight: 800, fontSize: 20, color: C.ink }}>🎁 Packs temáticos</span>
+                <button onClick={() => setStore(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: 22, cursor: "pointer" }}>✕</button>
+              </div>
+              <div style={{ fontFamily: body, fontSize: 12, color: C.muted, marginBottom: 8 }}>Cambian la trivia, las palabras y el look de todos tus juegos.</div>
+              {Object.entries(THEMES).map(([k, t]) => {
+                const owned = ownedThemes.includes(k), active = theme === k;
+                return (
+                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: `1px solid ${C.line}` }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${t.accent}, ${t.tint})`, display: "grid", placeItems: "center", fontSize: 26, flex: "0 0 auto" }}>{t.emoji}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: display, fontWeight: 800, fontSize: 16, color: C.ink }}>{t.name}</div>
+                      <div style={{ fontFamily: body, fontSize: 12, color: C.muted }}>{t.desc}</div>
+                    </div>
+                    <button onClick={() => { if (owned) { setTheme(k); } else if (coins >= t.price) { setCoins((c) => c - t.price); setOwnedThemes((o) => [...o, k]); setTheme(k); flash(`¡${t.name} activado! 🎉`); } else { flash("No tienes monedas suficientes"); } }} disabled={!owned && coins < t.price} style={{ flex: "0 0 auto", padding: "9px 14px", border: "none", borderRadius: 12, fontFamily: display, fontWeight: 800, fontSize: 13, cursor: (!owned && coins < t.price) ? "default" : "pointer", background: active ? C.basil : owned ? C.surf : C.coral, color: active ? "#fff" : owned ? C.ink : "#fff" }}>{active ? "Activo ✓" : owned ? "Activar" : `💎 ${t.price}`}</button>
+                  </div>
+                );
+              })}
+              <div style={{ fontFamily: mono, fontSize: 11, color: C.muted, textAlign: "center", marginTop: 12 }}>Tienes 🪙 {coins} · gana más jugando</div>
+            </div>
+          </div>
+        )}
+
+        {shareBadge && (
+          <div onClick={() => setShareBadge(null)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.6)", display: "grid", placeItems: "center", zIndex: 56, padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 300 }}>
+              <div style={{ background: `linear-gradient(150deg, ${C.gold}, ${C.coral})`, borderRadius: 24, padding: 26, color: "#fff", textAlign: "center", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, bottom: 0, width: 70, background: "linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)", animation: "shine 1.5s ease-in-out infinite" }} />
+                <div style={{ fontFamily: mono, fontSize: 12, opacity: .85 }}>insignia desbloqueada</div>
+                <div style={{ fontSize: 72, margin: "6px 0" }}>{shareBadge.emoji}</div>
+                <div style={{ fontFamily: display, fontWeight: 800, fontSize: 26 }}>{shareBadge.label}</div>
+                <div style={{ fontFamily: body, fontSize: 13, marginTop: 8, opacity: .9 }}>{current?.name} · T1</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 }}><span style={{ fontSize: 18 }}>🎯</span><span style={{ fontFamily: display, fontWeight: 800, fontSize: 16 }}>Banter</span></div>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button onClick={() => { shareBadgeToChat(shareBadge); setShareBadge(null); }} style={{ flex: 1, padding: "12px 0", border: `1px solid ${C.line}`, borderRadius: 13, background: C.card, color: C.ink, fontFamily: display, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💬 Al chat</button>
+                <button onClick={() => setShareBadge(null)} style={{ flex: 1, padding: "12px 0", border: "none", borderRadius: 13, background: C.coral, color: "#fff", fontFamily: display, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Guardar imagen</button>
+              </div>
+              <div style={{ textAlign: "center", color: C.muted, fontFamily: body, fontSize: 11, marginTop: 8 }}>Stories · WhatsApp · captura</div>
+            </div>
+          </div>
+        )}
+
+        {share && current && (
+          <div onClick={() => setShare(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,8,10,.6)", display: "grid", placeItems: "center", zIndex: 56, padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 300 }}>
+              <div style={{ background: `linear-gradient(150deg, ${C.coral}, ${C.grape})`, borderRadius: 24, padding: 24, color: "#fff", textAlign: "center" }}>
+                <div style={{ fontSize: 36 }}>🎯</div>
+                <div style={{ fontFamily: display, fontWeight: 800, fontSize: 25, letterSpacing: 0.5 }}>Banter</div>
+                <div style={{ fontFamily: mono, fontSize: 12, opacity: .8, marginTop: 4 }}>{GINFO[gt].name} · hoy</div>
+                <div style={{ fontFamily: mono, fontWeight: 500, fontSize: 52, margin: "10px 0 2px" }}>#{yourRankToday}</div>
+                <div style={{ fontFamily: display, fontWeight: 800, fontSize: 18 }}>{players.find((p) => p.you).score} pts en {current.name}</div>
+                <div style={{ fontFamily: body, fontSize: 13, marginTop: 10, opacity: .9 }}>{yourRankToday === 1 ? "¡Primer puesto! 👑" : "¿Me superas hoy?"}</div>
+              </div>
+              <div style={{ textAlign: "center", color: C.muted, fontFamily: body, fontSize: 12, marginTop: 12 }}>Captura para tus stories · cierra tocando fuera</div>
+            </div>
+          </div>
+        )}
+
+        {/* toast recompensa */}
+        {toastReward != null && <div style={{ position: "absolute", top: 64, left: "50%", transform: "translateX(-50%)", zIndex: 70, background: C.ink, color: "#fff", fontFamily: body, fontWeight: 600, fontSize: 13, padding: "9px 16px", borderRadius: 20, boxShadow: "0 6px 18px rgba(0,0,0,.3)", animation: "pop .25s", whiteSpace: "nowrap" }}>+{toastReward} 🪙 por jugar</div>}
+
+        {/* ===== CHINCHAZO ENTRANTE ===== */}
+        {incoming && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none", display: "grid", placeItems: "center" }}>
+            <div style={{ textAlign: "center", animation: "pop .4s" }}>
+              <div style={{ position: "relative", fontSize: 96, animation: "wob 1s infinite", filter: "drop-shadow(0 8px 14px rgba(0,0,0,.25))" }}>
+                {incoming.r.emoji}
+                {[[-70, 20], [70, 40], [0, -20]].map((f, i) => <span key={i} style={{ position: "absolute", left: `calc(50% + ${f[0]}px)`, top: f[1], fontSize: 30, animation: `floatup ${1.2 + i * .25}s ${i * .15}s ease-out forwards` }}>{incoming.r.emoji}</span>)}
+              </div>
+              <div style={{ marginTop: 6, display: "inline-block", background: C.card, color: C.ink, fontFamily: display, fontWeight: 800, fontSize: 16, padding: "8px 16px", borderRadius: 16, boxShadow: "0 8px 24px rgba(42,18,24,.25)", border: `1px solid ${C.line}` }}>{incoming.mine ? incoming.label : incoming.label}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function qaBtn() {
+  return { padding: "11px 0", border: `1px solid ${C.line}`, borderRadius: 12, background: C.surf, color: C.ink, fontFamily: display, fontWeight: 700, fontSize: 12.5, cursor: "pointer" };
+}
+
+function QARow({ id, score, onPlay }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "10px 12px", marginBottom: 8 }}>
+      <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surf, display: "grid", placeItems: "center", fontSize: 22 }}>{QA_EMOJI[id]}</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: display, fontWeight: 800, fontSize: 15, color: C.ink }}>{GINFO[id].name}</div>
+        <div style={{ fontFamily: body, fontSize: 11.5, color: C.muted }}>{GINFO[id].tag}{score != null ? ` · última: ${score}` : ""}</div>
+      </div>
+      <button onClick={onPlay} style={{ border: "none", background: C.coral, color: "#fff", padding: "9px 16px", borderRadius: 11, fontFamily: display, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Probar</button>
+    </div>
+  );
+}
+
+function Toggle({ on, onClick }) {
+  return (
+    <button onClick={onClick} style={{ width: 46, height: 27, borderRadius: 20, border: "none", cursor: "pointer", background: on ? C.basil : C.surf2, position: "relative", transition: "background .2s", flex: "0 0 auto" }}>
+      <span style={{ position: "absolute", top: 3, left: on ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.3)", transition: "left .2s" }} />
+    </button>
+  );
+}
+
+function ChatMsg({ m, onShareBadge }) {
+  const mine = m.who === "Tú";
+  if (m.type === "badge") return (
+    <div style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "85%" }}>
+      <div style={{ fontFamily: mono, fontSize: 9, color: C.muted, marginBottom: 2, paddingLeft: 4 }}>{m.who} · {m.time}</div>
+      <div onClick={onShareBadge} style={{ position: "relative", overflow: "hidden", background: "rgba(245,166,35,.18)", border: `1px solid ${C.gold}`, borderRadius: 14, padding: "9px 13px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+        <div style={{ position: "absolute", top: 0, bottom: 0, width: 40, background: "linear-gradient(90deg,transparent,rgba(245,166,35,.5),transparent)", animation: "shine 2s ease-in-out infinite" }} />
+        <span style={{ fontSize: 26 }}>{m.badge.emoji}</span>
+        <div><div style={{ fontFamily: mono, fontSize: 9, color: C.goldT }}>DESBLOQUEÓ INSIGNIA</div><div style={{ fontFamily: display, fontWeight: 800, fontSize: 14, color: C.ink }}>{m.badge.label}</div></div>
+      </div>
+    </div>
+  );
+  if (m.type === "score") return (
+    <div style={{ alignSelf: mine ? "flex-end" : "flex-start", display: "flex", alignItems: "center", gap: 8, maxWidth: "88%" }}>
+      <div style={{ background: m.top ? C.card : C.surf, color: C.ink, borderRadius: 14, padding: "8px 13px", display: "flex", alignItems: "center", gap: 8, border: m.top ? `1px solid ${C.line}` : "none", boxShadow: m.top ? "0 2px 8px rgba(42,18,24,.07)" : "none" }}>
+        {m.top && <span style={{ fontSize: 16 }}>🏆</span>}
+        <div>
+          <div style={{ fontFamily: body, fontSize: 14, fontWeight: 600 }}>{m.who} hizo {m.pts} Puntos{m.secs != null ? ` · ⏱${m.secs}s` : ""}</div>
+          <div style={{ fontFamily: mono, fontSize: 10, color: C.muted }}>{m.time}</div>
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "82%" }}>
+      <div style={{ fontFamily: mono, fontSize: 9, color: C.muted, marginBottom: 2, paddingLeft: 4, textAlign: mine ? "right" : "left" }}>{m.who} · {m.time}</div>
+      <div style={{ background: mine ? C.coral : C.surf, color: mine ? "#fff" : C.ink, padding: "8px 13px", borderRadius: 14, fontFamily: body, fontSize: 14 }}>{m.text}</div>
+    </div>
+  );
+}
+
+function actBtn(bg, solid, shadow) {
+  const isSurf = bg === "surf";
+  return { flex: 1, padding: "13px 0", border: isSurf ? `1px solid ${C.line}` : "none", borderRadius: 13, fontFamily: display, fontWeight: 700, fontSize: 13, color: solid ? "#fff" : C.ink, background: isSurf ? C.surf : bg, cursor: "pointer", boxShadow: shadow ? `0 4px 0 ${shadow}` : "none" };
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
