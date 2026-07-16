@@ -4,8 +4,8 @@ import { color, font } from "../theme";
 // Colores fijos de CLAUDE.md/prototipo: 1º amarillo, 2º azul, 3º rojo, alturas 92/68/52.
 const PLACE_STYLE: Record<1 | 2 | 3, { bg: string; height: number; text: string }> = {
   1: { bg: color.amarillo, height: 92, text: color.tinta },
-  2: { bg: color.azul, height: 68, text: "#fff" },
-  3: { bg: color.rojo, height: 52, text: "#fff" },
+  2: { bg: color.azul, height: 68, text: color.blanco },
+  3: { bg: color.rojo, height: 52, text: color.blanco },
 };
 
 export function Podium({ entries }: { entries: RankingEntry[] }) {

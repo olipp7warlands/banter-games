@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { color, font, radius } from "../theme";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { Logo } from "../components/Logo";
 import { useCreateProfile } from "../hooks/useProfile";
 
 const AVATARS = ["⭐", "🦊", "🐼", "🐧", "🦉", "🐙", "🦁", "🐢", "🦄", "🐝", "🦋", "🐳"];
@@ -30,6 +31,9 @@ export function OnboardingPage() {
       }}
     >
       <div style={{ maxWidth: 360, margin: "0 auto", width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+          <Logo size={26} textSize={22} />
+        </div>
         <div
           style={{
             fontFamily: font.display,
@@ -70,7 +74,7 @@ export function OnboardingPage() {
                 padding: "10px 0",
                 borderRadius: radius,
                 border: `1.5px solid ${avatar === a ? color.azul : color.linea}`,
-                background: avatar === a ? "rgba(29,93,236,0.1)" : color.card,
+                background: avatar === a ? color.azulTinte : color.card,
                 cursor: "pointer",
               }}
             >

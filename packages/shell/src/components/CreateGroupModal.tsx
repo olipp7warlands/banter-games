@@ -52,7 +52,7 @@ export function CreateGroupModal({ onClose, onCreated }: Props) {
                   padding: "12px 8px",
                   borderRadius: radius,
                   border: `1.5px solid ${selected ? color.azul : color.linea}`,
-                  background: selected ? "rgba(29,93,236,0.1)" : color.card,
+                  background: selected ? color.azulTinte : color.card,
                   opacity: disponible ? 1 : 0.4,
                   cursor: disponible ? "pointer" : "not-allowed",
                   fontFamily: font.display,
@@ -84,7 +84,7 @@ export function CreateGroupModal({ onClose, onCreated }: Props) {
 const overlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(26,26,26,0.4)",
+  background: color.velo,
   display: "grid",
   placeItems: "end center",
   zIndex: 50,

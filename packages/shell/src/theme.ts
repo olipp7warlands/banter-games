@@ -13,15 +13,19 @@ export const color = {
   superficie: "rgba(26,26,26,0.06)",
   superficieFuerte: "rgba(26,26,26,0.11)",
   linea: "rgba(26,26,26,0.12)",
+  scrim: "rgba(0,0,0,0.4)", // velo negro puro: chips/sombras legibles sobre imágenes o splits de color
+  velo: "rgba(26,26,26,0.4)", // velo con tinte de tinta: fondo de modales/overlays de UI
 
   tinta: "#1A1A1A",
   tintaSuave: "#4A4A4A",
   muted: "#8C8880",
+  blanco: "#FFFFFF", // texto/iconos sobre un primario saturado — nunca "#fff" suelto
 
   rojo: "#E63946",
   rojoOscuro: "#B02733",
   azul: "#1D5DEC",
   azulOscuro: "#1445B0",
+  azulTinte: "rgba(29,93,236,0.1)", // fondo sutil de "seleccionado" (chips, opciones activas)
   amarillo: "#F4C20D",
   amarilloOscuro: "#8A6D00",
 } as const;

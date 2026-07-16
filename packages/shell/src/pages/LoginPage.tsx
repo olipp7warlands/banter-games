@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { color, font, radius } from "../theme";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { Logo } from "../components/Logo";
 
 // Google como opción primaria (evita salir a la app de correo en móvil, donde se
 // pierden sesiones fácilmente en público 35-65); magic-link como alternativa secundaria.
@@ -44,8 +45,10 @@ export function LoginPage() {
     >
       <div style={{ maxWidth: 360, margin: "0 auto", width: "100%" }}>
         <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 32, color: color.tinta }}>Banter</div>
-          <div style={{ fontFamily: font.body, fontSize: 14, color: color.tintaSuave, marginTop: 6 }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Logo size={34} textSize={32} />
+          </div>
+          <div style={{ fontFamily: font.body, fontSize: 14, color: color.tintaSuave, marginTop: 10 }}>
             Juegos diarios con tu círculo
           </div>
         </div>

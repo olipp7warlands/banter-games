@@ -60,7 +60,7 @@ export function ChatTab({ groupId }: { groupId: string }) {
             border: "none",
             borderRadius: radius,
             background: color.azul,
-            color: "#fff",
+            color: color.blanco,
             width: 42,
             fontSize: 18,
             cursor: text.trim() ? "pointer" : "not-allowed",
@@ -123,7 +123,7 @@ function ChatBubble({ message, mine }: { message: ChatMessageWithProfile; mine: 
       <div
         style={{
           background: mine ? color.azul : color.superficie,
-          color: mine ? "#fff" : color.tinta,
+          color: mine ? color.blanco : color.tinta,
           padding: "8px 13px",
           borderRadius: radius,
           fontFamily: font.body,

@@ -27,7 +27,7 @@ export function PrimaryButton({ variant = "azul", style, children, disabled, ...
         fontFamily: font.display,
         fontWeight: 800,
         fontSize: 17,
-        color: variant === "amarillo" ? color.tinta : "#fff",
+        color: variant === "amarillo" ? color.tinta : color.blanco,
         background: disabled ? color.superficieFuerte : BG[variant],
         boxShadow: disabled ? "none" : `0 4px 0 ${BG_OSCURO[variant]}`,
         cursor: disabled ? "not-allowed" : "pointer",
