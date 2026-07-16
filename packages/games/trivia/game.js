@@ -1,15 +1,13 @@
 // Trivia — traducido de QuizGame (prototype/banter.jsx líneas 206-247), vanilla JS + SDK.
-// El bonus de crono NO se calcula aquí: el juego reporta score/secs en crudo
-// (BanterSDK.gameOver(score, {secs})) y el shell calcula el bonus (fuente única de verdad).
+// Crono ascendente + barra de bonus: SOLO visual. El juego reporta score base y secs en
+// crudo (BanterSDK.gameOver(score, {secs})); el shell calcula y persiste el bonus real
+// (computeBonus en daily.ts, fuente única de verdad). El desglose de fin de partida usa
+// la MISMA fórmula (max(0,par-secs)*2) únicamente para mostrarlo un instante antes de
+// terminar — nunca se suma al score que se reporta.
 import { buildQuestions } from "./shuffle.mjs";
+import { QUESTIONS } from "./questions.mjs";
 
-const QUESTIONS = [
-  { q: "¿Capital de Francia?", opts: ["Roma", "París", "Berlín", "Madrid"], a: 1 },
-  { q: "¿Cuántos días tiene una semana?", opts: ["5", "6", "7", "8"], a: 2 },
-  { q: "¿Cuál es el planeta rojo?", opts: ["Venus", "Marte", "Júpiter", "Saturno"], a: 1 },
-  { q: "¿Quién escribió el Quijote?", opts: ["Lorca", "Cervantes", "Neruda", "Machado"], a: 1 },
-  { q: "¿Océano más grande del mundo?", opts: ["Atlántico", "Índico", "Ártico", "Pacífico"], a: 3 },
-];
+const QUESTIONS_PER_DAY = 5;
 
 // Tokens Bauhaus (ver packages/shell/src/theme.ts) — sin verde, radius 0.
 const C = {
@@ -26,22 +24,65 @@ let idx = 0;
 let score = 0;
 let picked = null;
 let t0 = 0;
+let par = null;
+let timerInterval = null;
+let finalSecs = 0;
 
-function render() {
-  const q = questions[idx];
+function elapsedSecs() {
+  return Math.max(0, Math.floor((Date.now() - t0) / 1000));
+}
+
+// Se pinta UNA vez al arrancar; el crono se actualiza in-place (updateCrono) para no
+// destruir el estado de la pregunta en curso, y #area se reemplaza por pregunta.
+function renderShell() {
   const root = document.getElementById("game");
   root.innerHTML = `
     <div style="padding:18px 18px 26px;color:${C.tinta};">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <span style="font-family:'Jost',system-ui;font-weight:800;font-size:24px;">Trivia</span>
-        <span style="font-family:'DM Mono',monospace;font-size:13px;color:${C.tintaSuave};">${idx + 1}/${questions.length}</span>
+      <div style="font-family:'Jost',system-ui;font-weight:800;font-size:24px;">Trivia</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;">
+        <span id="crono" style="font-family:'DM Mono',monospace;font-size:32px;font-weight:500;color:${C.azul};">⏱ 0s</span>
+        ${par != null ? `<span style="font-family:'Inter',system-ui;font-size:11px;color:${C.tintaSuave};">bonus hasta ${par}s</span>` : ""}
       </div>
-      <div style="text-align:center;margin:10px 0;font-family:'DM Mono',monospace;font-size:30px;font-weight:500;color:${C.rojo};">${score}</div>
-      <div style="background:${C.card};border:1px solid ${C.linea};border-radius:0;padding:22px 16px;text-align:center;margin-bottom:14px;">
-        <div style="font-family:'Jost',system-ui;font-weight:800;font-size:20px;">${q.q}</div>
-      </div>
-      <div id="opts" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+      ${
+        par != null
+          ? `<div style="height:6px;background:${C.linea};margin:6px 0 14px;overflow:hidden;">
+               <div id="barra" style="height:100%;width:0%;background:${C.azul};transition:width .2s linear;"></div>
+             </div>`
+          : `<div style="margin-bottom:14px;"></div>`
+      }
+      <div id="marcador" style="text-align:center;margin-bottom:10px;font-family:'DM Mono',monospace;font-size:26px;font-weight:500;color:${C.rojo};">0</div>
+      <div id="area"></div>
     </div>
+  `;
+}
+
+function updateCrono() {
+  const cronoEl = document.getElementById("crono");
+  if (!cronoEl) return;
+  const elapsed = elapsedSecs();
+  const over = par != null && elapsed > par;
+  const color = over ? C.rojo : C.azul;
+  cronoEl.textContent = `⏱ ${elapsed}s`;
+  cronoEl.style.color = color;
+  const barraEl = document.getElementById("barra");
+  if (barraEl && par) {
+    const pct = over ? 100 : Math.min(100, (elapsed / par) * 100);
+    barraEl.style.width = `${pct}%`;
+    barraEl.style.background = color;
+  }
+}
+
+function renderQuestion() {
+  const q = questions[idx];
+  const area = document.getElementById("area");
+  area.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
+      <span style="font-family:'DM Mono',monospace;font-size:13px;color:${C.tintaSuave};">${idx + 1}/${questions.length}</span>
+    </div>
+    <div style="background:${C.card};border:1px solid ${C.linea};padding:22px 16px;text-align:center;margin-bottom:14px;">
+      <div style="font-family:'Jost',system-ui;font-weight:800;font-size:20px;">${q.q}</div>
+    </div>
+    <div id="opts" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
   `;
   const optsEl = document.getElementById("opts");
   q.opts.forEach((label, i) => {
@@ -57,7 +98,10 @@ function pick(i) {
   if (picked !== null) return;
   picked = i;
   const q = questions[idx];
-  if (i === q.a) score += 45;
+  if (i === q.a) {
+    score += 45;
+    document.getElementById("marcador").textContent = String(score);
+  }
 
   const optsEl = document.getElementById("opts");
   Array.from(optsEl.children).forEach((btn, bi) => {
@@ -71,18 +115,42 @@ function pick(i) {
   setTimeout(() => {
     idx += 1;
     picked = null;
-    if (idx >= questions.length) terminar();
-    else render();
+    if (idx >= questions.length) mostrarDesglose();
+    else renderQuestion();
   }, 850);
 }
 
+// Congela finalSecs UNA vez aquí — terminar() reutiliza el mismo valor, no recalcula
+// tras la pausa de la pantalla de desglose (si no, el tiempo mostrado y el reportado
+// al shell divergirían por los ~1.8s de la pausa).
+function mostrarDesglose() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  finalSecs = elapsedSecs();
+  const bonus = par != null ? Math.max(0, par - finalSecs) * 2 : 0;
+  const total = score + bonus;
+
+  const area = document.getElementById("area");
+  area.innerHTML = `
+    <div style="text-align:center;padding:34px 10px;">
+      <div style="font-family:'Jost',system-ui;font-weight:800;font-size:19px;color:${C.tinta};line-height:1.6;">
+        ⏱ ${finalSecs}s · Base ${score}${bonus > 0 ? ` + Bonus velocidad +${bonus}` : ""} = ${total}
+      </div>
+    </div>
+  `;
+
+  setTimeout(terminar, 1800);
+}
+
 function terminar() {
-  const secs = Math.round((Date.now() - t0) / 1000);
-  window.BanterSDK.gameOver(score, { secs });
+  window.BanterSDK.gameOver(score, { secs: finalSecs });
 }
 
 window.BanterSDK.onInit((cfg) => {
-  questions = buildQuestions(QUESTIONS, cfg.seed);
+  par = cfg.parSegundos ?? null;
+  questions = buildQuestions(QUESTIONS, cfg.seed, QUESTIONS_PER_DAY);
   window.BanterSDK.ready();
 });
 
@@ -91,5 +159,10 @@ window.BanterSDK.onStart(() => {
   idx = 0;
   score = 0;
   picked = null;
-  render();
+  finalSecs = 0;
+  renderShell();
+  renderQuestion();
+  updateCrono();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateCrono, 1000);
 });

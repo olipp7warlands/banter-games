@@ -19,15 +19,18 @@ export function shuffle(arr, rnd) {
   return a;
 }
 
-// Baraja el orden de las preguntas y, dentro de cada una, el orden de las opciones,
-// de forma determinista por seed — devuelve el índice de la opción correcta ya remapeado.
-export function buildQuestions(questions, seed) {
+// Elige `count` preguntas del banco sin repetir (baraja todos los índices y toma las
+// primeras `count` — una permutación nunca repite) y, dentro de cada una, baraja el
+// orden de las opciones — todo determinista por seed. Devuelve el índice de la opción
+// correcta ya remapeado al nuevo orden.
+export function buildQuestions(questions, seed, count = 5) {
   const rnd = mulberry32(seed);
   const order = shuffle(
     questions.map((_, i) => i),
     rnd
   );
-  return order.map((qi) => {
+  const picked = order.slice(0, count);
+  return picked.map((qi) => {
     const src = questions[qi];
     const optOrder = shuffle(
       src.opts.map((_, i) => i),

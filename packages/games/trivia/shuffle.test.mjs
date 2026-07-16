@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mulberry32, buildQuestions } from "./shuffle.mjs";
+import { QUESTIONS as BANK } from "./questions.mjs";
 
 const QUESTIONS = [
   { q: "¿Capital de Francia?", opts: ["Roma", "París", "Berlín", "Madrid"], a: 1 },
@@ -24,6 +25,34 @@ describe("buildQuestions", () => {
     const built = buildQuestions(QUESTIONS, 123);
     built.forEach((q, i) => {
       const original = QUESTIONS.find((orig) => orig.q === q.q);
+      expect(q.opts[q.a]).toBe(original.opts[original.a]);
+    });
+  });
+});
+
+describe("buildQuestions sobre el banco real (66 preguntas, reto diario)", () => {
+  it("elige exactamente 5 preguntas sin repetir", () => {
+    const built = buildQuestions(BANK, 2026071601, 5);
+    expect(built).toHaveLength(5);
+    expect(new Set(built.map((q) => q.q)).size).toBe(5);
+  });
+
+  it("misma seed -> las mismas 5 preguntas (mismo orden) dos veces", () => {
+    const a = buildQuestions(BANK, 2026071601, 5);
+    const b = buildQuestions(BANK, 2026071601, 5);
+    expect(a).toEqual(b);
+  });
+
+  it("seeds distintas -> selecciones distintas", () => {
+    const a = buildQuestions(BANK, 1, 5).map((q) => q.q);
+    const b = buildQuestions(BANK, 2, 5).map((q) => q.q);
+    expect(a).not.toEqual(b);
+  });
+
+  it("cada opción correcta remapeada sigue siendo el texto correcto original", () => {
+    const built = buildQuestions(BANK, 555, 5);
+    built.forEach((q) => {
+      const original = BANK.find((orig) => orig.q === q.q);
       expect(q.opts[q.a]).toBe(original.opts[original.a]);
     });
   });

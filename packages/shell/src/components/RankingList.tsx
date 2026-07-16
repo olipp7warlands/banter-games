@@ -25,7 +25,7 @@ export function RankingList({ entries }: { entries: RankingEntry[] }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: color.tinta }}>{e.nombre}</div>
             <div style={{ fontFamily: font.body, fontSize: 12, color: color.muted }}>
-              {e.bestScore != null ? `${e.bestScore} pts${e.bestSecs != null ? ` · ${e.bestSecs}s` : ""}` : "sin jugar hoy"}
+              {e.bestScore != null ? `${e.bestScore} pts${e.bestSecs != null ? ` · ⏱${e.bestSecs}s` : ""}` : "sin jugar hoy"}
             </div>
           </div>
           {e.streak > 0 && (
