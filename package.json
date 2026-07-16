@@ -1,0 +1,14 @@
+{
+  "name": "banter",
+  "private": true,
+  "workspaces": [
+    "packages/shell"
+  ],
+  "scripts": {
+    "dev": "npm run copy-games -w packages/shell && npm run dev -w packages/shell",
+    "build": "npm run copy-games -w packages/shell && npm run build -w packages/shell",
+    "test": "npm run test -w packages/shell",
+    "copy-games": "npm run copy-games -w packages/shell",
+    "seed-daily": "node scripts/seed-daily-games.mjs"
+  }
+}

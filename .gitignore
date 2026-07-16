@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.local
+packages/shell/public/games/
+packages/shell/public/games-sdk/
+*.tsbuildinfo

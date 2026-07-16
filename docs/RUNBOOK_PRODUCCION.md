@@ -21,9 +21,15 @@ git push -u origin main
 ## 2. Supabase (15 min)
 - [ ] Crear proyecto (región EU-West).
 - [ ] SQL Editor → pegar `docs/DB_SCHEMA.sql` → Run.
-- [ ] Authentication → habilitar Email y Google.
+- [ ] SQL Editor → pegar `docs/DB_SCHEMA_RLS_M1.sql` → Run (políticas RLS que faltaban para M1: `daily_games` público solo hasta hoy, `profiles`/`groups`/`group_members`, función `group_lookup_by_code` para unirse por código).
+- [ ] Authentication → habilitar Email (magic-link) y Google:
+  - [ ] Email: activar "Enable Email provider" (ya viene con magic-link/OTP, no hace falta nada más).
+  - [ ] Google: en [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → crear/usar un proyecto → "Create OAuth client ID" → tipo **Web application**.
+  - [ ] En Supabase, Authentication → Providers → Google → activar el toggle: te muestra la **Callback URL** exacta (`https://<project-ref>.supabase.co/auth/v1/callback`) que hay que pegar en "Authorized redirect URIs" del cliente OAuth de Google.
+  - [ ] Copiar el **Client ID** y **Client Secret** que genera Google → pegarlos en el mismo panel de Supabase (Google) → Save.
+  - [ ] Authentication → URL Configuration → añadir a "Redirect URLs": `http://localhost:5173/auth/callback` (dev) y `https://<tu-dominio>/auth/callback` (prod) — es la ruta que ya existe en el shell (`AuthCallbackPage`).
 - [ ] Copiar `SUPABASE_URL`, `anon key` (shell) y `service_role` (SOLO para la API de Railway).
-- [ ] Sembrar `daily_games` de 30 días y `packs` (hero/pirate/space, 300 monedas).
+- [ ] Sembrar `daily_games` de 30 días: copiar `scripts/.env.example` a `scripts/.env`, rellenar `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, `npm run seed-daily`. Sembrar también `packs` (hero/pirate/space, 300 monedas).
 
 ## 3. Railway (20 min)
 - [ ] Nuevo proyecto → 2 servicios desde el repo:
