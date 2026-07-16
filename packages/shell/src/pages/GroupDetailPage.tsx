@@ -4,20 +4,27 @@ import { color, font, radius } from "../theme";
 import { useGroup } from "../hooks/useGroups";
 import { useDailyGame } from "../hooks/useDailyGame";
 import { useMyTodayPlays, attemptsRemaining, bestScore, useSubmitPlay } from "../hooks/usePlays";
+import { useGroupRanking } from "../hooks/useGroupRanking";
 import { CategoryBadge } from "../components/CategoryBadge";
 import { AttemptsBadge } from "../components/AttemptsBadge";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { GamePlayer } from "../components/GamePlayer";
+import { Podium } from "../components/Podium";
+import { RankingList } from "../components/RankingList";
+import { ChatTab } from "../components/ChatTab";
 import { GAME_META } from "../lib/categories";
 import { computeBonus } from "../lib/daily";
 
-type Tab = "hoy" | "chat";
+type Tab = "hoy" | "ranking" | "chat";
+
+const TAB_LABEL: Record<Tab, string> = { hoy: "Hoy", ranking: "Ranking", chat: "Chat" };
 
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: group, isLoading: groupLoading } = useGroup(id);
   const { data: dailyGame, isLoading: dailyLoading } = useDailyGame(group?.categoria);
   const { data: plays } = useMyTodayPlays(id);
+  const { data: ranking } = useGroupRanking(id);
   const submitPlay = useSubmitPlay(id, dailyGame?.game_id);
   const [tab, setTab] = useState<Tab>("hoy");
   const [playing, setPlaying] = useState(false);
@@ -54,7 +61,7 @@ export function GroupDetailPage() {
       </div>
 
       <div style={{ display: "flex", borderBottom: `1px solid ${color.linea}`, padding: "0 20px" }}>
-        {(["hoy", "chat"] as Tab[]).map((t) => (
+        {(["hoy", "ranking", "chat"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -70,14 +77,27 @@ export function GroupDetailPage() {
               borderBottom: tab === t ? `2px solid ${color.azul}` : "2px solid transparent",
             }}
           >
-            {t === "hoy" ? "Hoy" : "Chat"}
+            {TAB_LABEL[t]}
           </button>
         ))}
       </div>
 
-      {tab === "chat" && (
-        <div style={{ padding: 30, textAlign: "center", fontFamily: font.body, color: color.tintaSuave }}>
-          Chat llega en M2.
+      {tab === "ranking" && (
+        <div style={{ padding: 20 }}>
+          {ranking && ranking.length > 0 ? (
+            <>
+              <Podium entries={ranking} />
+              <RankingList entries={ranking} />
+            </>
+          ) : (
+            <div style={{ fontFamily: font.body, color: color.tintaSuave, textAlign: "center" }}>Cargando ranking…</div>
+          )}
+        </div>
+      )}
+
+      {tab === "chat" && id && (
+        <div style={{ padding: "0 20px 20px" }}>
+          <ChatTab groupId={id} />
         </div>
       )}
 

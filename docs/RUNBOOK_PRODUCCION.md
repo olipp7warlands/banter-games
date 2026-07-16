@@ -30,6 +30,7 @@ git push -u origin main
   - [ ] Authentication → URL Configuration → añadir a "Redirect URLs": `http://localhost:5173/auth/callback` (dev) y `https://<tu-dominio>/auth/callback` (prod) — es la ruta que ya existe en el shell (`AuthCallbackPage`).
 - [ ] Copiar `SUPABASE_URL`, `anon key` (shell) y `service_role` (SOLO para la API de Railway).
 - [ ] Sembrar `daily_games` de 30 días: copiar `scripts/.env.example` a `scripts/.env`, rellenar `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, `npm run seed-daily`. Sembrar también `packs` (hero/pirate/space, 300 monedas).
+- [ ] **M2 (chat Realtime + podio + rachas)** — cuando llegues a esa fase: SQL Editor → pegar `docs/DB_SCHEMA_M2.sql` → Run (RLS de `chat_messages` restringida a `tipo='text'`, trigger `chat_score_event` que emite el evento de score al chat, y activa Realtime en `chat_messages`). Todos los scripts SQL de este repo (`DB_SCHEMA.sql`, `DB_SCHEMA_RLS_M1.sql`, `DB_SCHEMA_M2.sql`) son idempotentes — se pueden re-ejecutar sin el error 42710 (duplicate_object) si algo falla a mitad.
 
 ## 3. Railway (20 min)
 - [ ] Nuevo proyecto → 2 servicios desde el repo:

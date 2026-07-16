@@ -59,3 +59,30 @@ export interface GroupLookupResult {
   is_public: boolean;
   picante: boolean;
 }
+
+// tipo='score' y 'sistema' solo los escribe el servidor (trigger chat_score_event en
+// docs/DB_SCHEMA_M2.sql); el cliente solo puede insertar tipo='text' (RLS lo exige).
+export type ChatMessageTipo = "text" | "score" | "pique" | "sistema";
+
+export interface ChatMessageContenidoText {
+  texto: string;
+}
+export interface ChatMessageContenidoScore {
+  pts: number;
+  secs: number | null;
+  top: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  group_id: string;
+  user_id: string;
+  tipo: ChatMessageTipo;
+  contenido: ChatMessageContenidoText | ChatMessageContenidoScore | Record<string, unknown>;
+  created_at: string;
+}
+
+// Con el join a profiles que usa useChatMessages (select *, profile:profiles(nombre,avatar)).
+export interface ChatMessageWithProfile extends ChatMessage {
+  profile: Pick<Profile, "nombre" | "avatar"> | null;
+}
