@@ -38,6 +38,10 @@ App social de **minijuegos diarios con tu círculo** (familia, amigos, compañer
 - **M3**: crono+bonus server-validado, monedas, tienda de packs, regalo diario.
 - **M4**: Modo Picante + mesas Mundial (moderación básica por reglas).
 - **M5**: Ligas + anti-cheat (reglas de `docs/DB_SCHEMA.sql`: score>p99, secs infrahumanos, varianza 0) + backoffice conectado.
+- **M6** (spec completa en `docs/FEATURE_CHEF_Y_RETOS.md`): Chef del Día + Ronda Extra con mutators, El Guante (reto con bote), replay UGC y retos virales jugables sin login.
+  - **M6a**: mutators en SDK/manifest + Chef del Día + Ronda Extra + medalla (sin compartir).
+  - **M6b**: El Guante + tarjeta-imagen compartible + tabla `challenges` + `/reto/:id` jugable como invitado (sin vídeo).
+  - **M6c**: input-log + vídeo-replay + fantasma 👻 + verificación de replays (puente a M5 anti-cheat).
 
 ## Estilo de trabajo
 TypeScript estricto, componentes pequeños, tokens de diseño en un solo archivo (`packages/shell/src/theme.ts`), tests para scoring/crono/rotación de seed. Reutilizar la lógica del prototipo traduciéndola, no copiando el archivo entero.
