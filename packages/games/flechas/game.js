@@ -1,13 +1,16 @@
 // Flechas — traducido de ArrowGame (prototype/banter.jsx líneas 691-741), vanilla JS + SDK.
 // El bonus de fin de partida (corazones restantes) es parte del sistema de puntuación
 // PROPIO del juego (como los +45 de Trivia), distinto del bonus de crono par/secs que
-// calcula el shell — el juego siempre reporta score/secs en crudo vía BanterSDK.gameOver.
+// calcula la API — el juego siempre reporta score/secs en crudo vía BanterSDK.gameOver.
+// Sin Pista: es el reto diario COMPETITIVO (misma seed para todo el grupo) — una ayuda
+// regalaría la solución de ese seed compartido a quien la usa. Crono+barra+desglose vía
+// packages/games-sdk/hud.js, igual que Trivia (ver comentario ahí).
 import { genArrows } from "./arrows.mjs";
+import { chronoHtml, createChrono, renderBreakdown } from "../../games-sdk/hud.js";
 
 const N = 8;
 const CS = 40;
 const START_HEARTS = 3;
-const START_HINTS = 2;
 
 const C = {
   tinta: "#1A1A1A",
@@ -16,7 +19,6 @@ const C = {
   linea: "rgba(26,26,26,0.12)",
   azul: "#1D5DEC",
   rojo: "#E63946",
-  amarillo: "#F4C20D",
 };
 
 const DIR_GLYPH = new Map([
@@ -28,11 +30,11 @@ const DIR_GLYPH = new Map([
 
 let arrows = [];
 let hearts = START_HEARTS;
-let hints = START_HINTS;
 let score = 0;
-let t0 = 0;
+let par = null;
+let chrono = null;
+let finalSecs = 0;
 let ended = false;
-let hintArrowId = null;
 
 function rayFree(arrow, list) {
   const occ = new Set();
@@ -50,24 +52,36 @@ function rayFree(arrow, list) {
   return true;
 }
 
-function layout() {
+// Se pinta UNA vez al arrancar (título + contador de flechas/corazones + HUD de crono);
+// renderBoard() solo toca #hudArrows y #content en cada toque, así el crono de hud.js
+// (que vive fuera de ambos) nunca se recrea ni parpadea a "0s" entre toques.
+function renderShell() {
   const root = document.getElementById("game");
-  const live = arrows.filter((a) => !a.out).length;
   root.innerHTML = `
     <div style="padding:16px 16px 24px;color:${C.tinta};">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-family:'Jost',system-ui;font-weight:800;font-size:24px;">Flechas</span>
-        <div style="display:flex;gap:8px;align-items:center;font-family:'DM Mono',monospace;font-size:13px;">
-          <span style="background:rgba(26,26,26,0.06);padding:4px 10px;border-radius:0;">➤ ${live}</span>
-          <span>${Array.from({ length: START_HEARTS }).map((_, i) => `<span style="opacity:${i < hearts ? 1 : 0.18}">❤️</span>`).join("")}</span>
-        </div>
+        <span id="hudArrows" style="display:flex;gap:8px;align-items:center;font-family:'DM Mono',monospace;font-size:13px;"></span>
       </div>
-      <div id="board" style="position:relative;width:${N * CS}px;height:${N * CS}px;margin:16px auto;background:${C.card};border:1px solid ${C.linea};"></div>
-      <div style="display:flex;justify-content:center;gap:10px;">
-        <button id="hint" style="padding:9px 16px;border-radius:0;border:1px solid ${C.linea};background:${C.card};color:${C.tintaSuave};font-family:'Jost',system-ui;font-weight:700;font-size:13px;cursor:pointer;">💡 Pista (${hints})</button>
-      </div>
-      <div style="text-align:center;font-family:'Inter',system-ui;font-size:12px;color:${C.tintaSuave};margin-top:10px;">Toca una flecha con salida libre. Si está bloqueada, pierdes un corazón.</div>
+      ${chronoHtml(par)}
+      <div id="content"></div>
     </div>
+  `;
+}
+
+function renderBoard() {
+  const live = arrows.filter((a) => !a.out).length;
+  const hudArrows = document.getElementById("hudArrows");
+  if (hudArrows) {
+    hudArrows.innerHTML = `
+      <span style="background:rgba(26,26,26,0.06);padding:4px 10px;border-radius:0;">➤ ${live}</span>
+      <span>${Array.from({ length: START_HEARTS }).map((_, i) => `<span style="opacity:${i < hearts ? 1 : 0.18}">❤️</span>`).join("")}</span>
+    `;
+  }
+  const content = document.getElementById("content");
+  content.innerHTML = `
+    <div id="board" style="position:relative;width:${N * CS}px;height:${N * CS}px;margin:16px auto;background:${C.card};border:1px solid ${C.linea};"></div>
+    <div style="text-align:center;font-family:'Inter',system-ui;font-size:12px;color:${C.tintaSuave};margin-top:10px;">Toca una flecha con salida libre. Si está bloqueada, pierdes un corazón.</div>
   `;
   const board = document.getElementById("board");
   for (const arrow of arrows) {
@@ -76,22 +90,31 @@ function layout() {
       const isHead = i === arrow.cells.length - 1;
       const cell = document.createElement("button");
       cell.style.cssText = `position:absolute;left:${c * CS}px;top:${r * CS}px;width:${CS - 2}px;height:${CS - 2}px;border:none;cursor:pointer;background:${C.azul};display:grid;place-items:center;color:#fff;font-size:16px;font-family:'Jost',system-ui;`;
-      if (arrow.id === hintArrowId) cell.style.background = C.amarillo;
       if (isHead) cell.textContent = DIR_GLYPH.get(`${arrow.dir[0]},${arrow.dir[1]}`) || "";
       cell.onclick = () => tap(arrow.id);
       board.appendChild(cell);
     });
   }
-  document.getElementById("hint").onclick = hint;
 }
 
+// chrono.stop() congela finalSecs UNA vez aquí — terminar() reutiliza el mismo valor
+// (mismo patrón que Trivia): el desglose no debe divergir del tiempo reportado al shell.
 function finish(finalScore) {
   if (ended) return;
   ended = true;
-  setTimeout(() => {
-    const secs = Math.round((Date.now() - t0) / 1000);
-    window.BanterSDK.gameOver(finalScore, { secs });
-  }, 400);
+  finalSecs = chrono.stop();
+  setTimeout(() => mostrarDesglose(finalScore), 400);
+}
+
+// Reemplaza solo #content (tablero+ayuda) — el título y el crono congelado de hud.js
+// siguen visibles arriba, igual que en Trivia.
+function mostrarDesglose(finalScore) {
+  renderBreakdown(document.getElementById("content"), { score: finalScore, secs: finalSecs, par });
+  setTimeout(() => terminar(finalScore), 1800);
+}
+
+function terminar(finalScore) {
+  window.BanterSDK.gameOver(finalScore, { secs: finalSecs });
 }
 
 function tap(arrowId) {
@@ -105,14 +128,14 @@ function tap(arrowId) {
     const remaining = arrows.filter((a) => !a.out).length;
     if (remaining === 0) {
       score += hearts * 40 + 60; // bonus de terminar el tablero, parte del scoring propio del juego
-      layout();
+      renderBoard();
       finish(score);
       return;
     }
-    layout();
+    renderBoard();
   } else {
     hearts -= 1;
-    layout();
+    renderBoard();
     const board = document.getElementById("board");
     board.classList.add("shake");
     setTimeout(() => board.classList.remove("shake"), 350);
@@ -120,30 +143,19 @@ function tap(arrowId) {
   }
 }
 
-function hint() {
-  if (ended || hints <= 0) return;
-  const free = arrows.find((a) => !a.out && rayFree(a, arrows));
-  if (!free) return;
-  hints -= 1;
-  hintArrowId = free.id;
-  layout();
-  setTimeout(() => {
-    hintArrowId = null;
-    layout();
-  }, 1400);
-}
-
 window.BanterSDK.onInit((cfg) => {
+  par = cfg.parSegundos ?? null;
   arrows = genArrows(cfg.seed, N, 10);
   window.BanterSDK.ready();
 });
 
 window.BanterSDK.onStart(() => {
-  t0 = Date.now();
   hearts = START_HEARTS;
-  hints = START_HINTS;
   score = 0;
   ended = false;
-  hintArrowId = null;
-  layout();
+  finalSecs = 0;
+  renderShell();
+  renderBoard();
+  chrono = createChrono(par);
+  chrono.start();
 });

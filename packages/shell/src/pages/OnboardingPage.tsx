@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { color, font, radius } from "../theme";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { Logo } from "../components/Logo";
+import { AppShell } from "../components/AppShell";
 import { useCreateProfile } from "../hooks/useProfile";
 
 const AVATARS = ["⭐", "🦊", "🐼", "🐧", "🦉", "🐙", "🦁", "🐢", "🦄", "🐝", "🦋", "🐳"];
@@ -20,17 +21,16 @@ export function OnboardingPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        background: color.fondo,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <div style={{ maxWidth: 360, margin: "0 auto", width: "100%" }}>
+    <AppShell>
+      <div
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
           <Logo size={26} textSize={22} />
         </div>
@@ -86,6 +86,6 @@ export function OnboardingPage() {
           {createProfile.isPending ? "Guardando…" : "Empezar"}
         </PrimaryButton>
       </div>
-    </div>
+    </AppShell>
   );
 }

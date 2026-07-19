@@ -45,8 +45,46 @@ export interface Play {
   attempt: 1 | 2;
   score: number;
   secs: number | null;
+  bonus: number;
   sabotaged: boolean;
   valid: boolean;
+  created_at: string;
+}
+
+// M3: escritos únicamente por la API (packages/api, service_role) vía credit_wallet();
+// el shell solo lee (RLS de solo lectura, docs/DB_SCHEMA_M3.sql).
+export interface Wallet {
+  user_id: string;
+  monedas: number;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  delta: number;
+  motivo: string;
+  created_at: string;
+}
+
+export interface Pack {
+  id: string;
+  nombre: string | null;
+  emoji: string | null;
+  precio: number | null;
+  exclusivo_game: string | null;
+  activo: boolean;
+}
+
+export interface UserPack {
+  user_id: string;
+  pack_id: string;
+}
+
+export interface GiftClaim {
+  user_id: string;
+  fecha: string;
+  reward_type: string;
+  reward_amount: number;
   created_at: string;
 }
 

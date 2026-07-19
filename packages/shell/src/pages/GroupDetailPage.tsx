@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { color, font, radius } from "../theme";
 import { useSession } from "../hooks/useSession";
 import { useGroup } from "../hooks/useGroups";
@@ -15,8 +15,9 @@ import { RankingList } from "../components/RankingList";
 import { ChatTab } from "../components/ChatTab";
 import { CountdownChip } from "../components/CountdownChip";
 import { Confetti } from "../components/Confetti";
+import { WalletBadge } from "../components/WalletBadge";
+import { AppShell } from "../components/AppShell";
 import { GAME_META, CATEGORY_SPLIT } from "../lib/categories";
-import { computeBonus } from "../lib/daily";
 
 type Tab = "hoy" | "ranking" | "chat";
 
@@ -24,6 +25,7 @@ const TAB_LABEL: Record<Tab, string> = { hoy: "Hoy", ranking: "Ranking", chat: "
 
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { session } = useSession();
   const { data: group, isLoading: groupLoading } = useGroup(id);
   const { data: dailyGame, isLoading: dailyLoading } = useDailyGame(group?.categoria);
@@ -32,22 +34,23 @@ export function GroupDetailPage() {
   const submitPlay = useSubmitPlay(id, dailyGame?.game_id);
   const [tab, setTab] = useState<Tab>("hoy");
   const [playing, setPlaying] = useState(false);
-  const [lastResult, setLastResult] = useState<{ score: number; secs: number | null } | null>(null);
   const [confettiBurst, setConfettiBurst] = useState(0);
 
   if (groupLoading || !group) {
-    return <div style={{ padding: 20, fontFamily: font.body, color: color.tintaSuave }}>Cargando…</div>;
+    return (
+      <AppShell>
+        <div style={{ padding: 20, fontFamily: font.body, color: color.tintaSuave }}>Cargando…</div>
+      </AppShell>
+    );
   }
 
   const gameMeta = dailyGame ? GAME_META[dailyGame.game_id] : undefined;
   const remaining = attemptsRemaining(plays ?? []);
   const best = bestScore(plays ?? []);
-  const bonus = lastResult ? computeBonus(gameMeta?.par ?? null, lastResult.secs) : null;
   const [splitA, splitB] = CATEGORY_SPLIT[group.categoria];
 
   const handleGameOver = async (result: { score: number; secs: number | null }) => {
     setPlaying(false);
-    setLastResult(result);
     await submitPlay.mutateAsync(result);
     const { data: freshRanking } = await refetchRanking();
     if (freshRanking?.[0]?.userId && freshRanking[0].userId === session?.user.id) {
@@ -56,9 +59,29 @@ export function GroupDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: color.fondo }}>
+    <AppShell>
       <Confetti burstKey={confettiBurst} />
       <div style={{ padding: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <button
+            onClick={() => navigate("/groups")}
+            aria-label="Volver a tus grupos"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontFamily: font.display,
+              fontWeight: 800,
+              fontSize: 26,
+              lineHeight: 1,
+              color: color.tinta,
+            }}
+          >
+            ‹
+          </button>
+          <WalletBadge />
+        </div>
         <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 24, color: color.tinta }}>
           {group.nombre}
         </div>
@@ -157,11 +180,12 @@ export function GroupDetailPage() {
                     Tu mejor marca hoy: {best} pts
                   </div>
                 )}
-                {lastResult && (
+                {submitPlay.data && (
                   <div style={{ fontFamily: font.body, fontSize: 13, color: color.tinta, marginBottom: 12 }}>
-                    Última partida: {lastResult.score} pts
-                    {lastResult.secs != null ? ` · ⏱${lastResult.secs}s` : ""}
-                    {bonus ? ` · +${bonus} bonus` : ""}
+                    Última partida: {submitPlay.data.breakdown.rawScore} pts
+                    {submitPlay.data.breakdown.secs != null ? ` · ⏱${submitPlay.data.breakdown.secs}s` : ""}
+                    {submitPlay.data.breakdown.bonus ? ` · +${submitPlay.data.breakdown.bonus} bonus` : ""}
+                    {` · +${submitPlay.data.coinsAwarded} 🪙`}
                   </div>
                 )}
                 <PrimaryButton onClick={() => setPlaying(true)} disabled={remaining <= 0}>
@@ -181,6 +205,6 @@ export function GroupDetailPage() {
           )}
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

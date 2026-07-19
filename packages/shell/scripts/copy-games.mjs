@@ -1,6 +1,7 @@
-// Copia el SDK y los bundles de juego a public/ para que Vite los sirva como estáticos.
-// Preserva la misma estructura relativa que packages/ (games-sdk/ hermano de games/<id>/)
-// porque index.html de cada juego referencia "../../games-sdk/sdk.js" (patrón _plantilla, congelado).
+// Copia el SDK, el HUD opcional y los bundles de juego a public/ para que Vite los sirva
+// como estáticos. Preserva la misma estructura relativa que packages/ (games-sdk/ hermano
+// de games/<id>/) porque index.html de cada juego referencia "../../games-sdk/sdk.js"
+// (patrón _plantilla, congelado) y game.js puede importar "../../games-sdk/hud.js".
 // Node puro (fs.cpSync), sin symlinks ni bash — el entorno de desarrollo es Windows.
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -19,6 +20,7 @@ fs.mkdirSync(path.join(publicDir, "games-sdk"), { recursive: true });
 fs.mkdirSync(path.join(publicDir, "games"), { recursive: true });
 
 fs.cpSync(path.join(packagesRoot, "games-sdk", "sdk.js"), path.join(publicDir, "games-sdk", "sdk.js"));
+fs.cpSync(path.join(packagesRoot, "games-sdk", "hud.js"), path.join(publicDir, "games-sdk", "hud.js"));
 
 for (const gameId of GAMES) {
   const src = path.join(packagesRoot, "games", gameId);

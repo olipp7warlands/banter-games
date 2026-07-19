@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { color, font, radius } from "../theme";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { Logo } from "../components/Logo";
+import { AppShell } from "../components/AppShell";
 
 // Google como opción primaria (evita salir a la app de correo en móvil, donde se
 // pierden sesiones fácilmente en público 35-65); magic-link como alternativa secundaria.
@@ -33,17 +34,16 @@ export function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        background: color.fondo,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <div style={{ maxWidth: 360, margin: "0 auto", width: "100%" }}>
+    <AppShell>
+      <div
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <Logo size={34} textSize={32} />
@@ -113,6 +113,6 @@ export function LoginPage() {
           </>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

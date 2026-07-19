@@ -23,13 +23,26 @@ git push -u origin main
 - [ ] SQL Editor → pegar `docs/DB_SCHEMA.sql` → Run.
 - [ ] Authentication → habilitar Email y Google.
 - [ ] Copiar `SUPABASE_URL`, `anon key` (shell) y `service_role` (SOLO para la API de Railway).
-- [ ] Sembrar `daily_games` de 30 días y `packs` (hero/pirate/space, 300 monedas).
+- [ ] Sembrar `daily_games` de 30 días (`npm run seed-daily`) y `packs` (`npm run seed-packs`
+      — hero/pirate/space, 300 monedas, ver `scripts/seed-packs.mjs`).
+- [ ] M3 (economía): pegar `docs/DB_SCHEMA_M3.sql` en el SQL Editor **por secciones**:
+      sección M3a de inmediato (aditiva, cierra el agujero de RLS de wallets/transactions/
+      packs/user_packs); sección M3b (`drop policy "insertar mis plays"`) SOLO cuando el
+      shell + la API de este milestone ya estén desplegados y sirviendo tráfico real — si se
+      pega antes, los jugadores en el shell viejo se quedan sin poder registrar partidas.
 
 ## 3. Railway (20 min)
-- [ ] Nuevo proyecto → 2 servicios desde el repo:
-      · `shell` (Vite build estático; sirve también /games/* y /manifest.json)
-      · `api` (Node: valida scores+bonus, cupos de piques, cierra jornadas de liga por cron, sirve manifest, push)
-- [ ] Variables: shell → SUPABASE_URL, SUPABASE_ANON; api → + SERVICE_ROLE.
+- [ ] Nuevo proyecto → 2 servicios desde el repo, **ambos con Root Directory = raíz del
+      repo** (no `packages/api` para el segundo: `packages/api/src/manifest.ts` importa
+      `manifest/manifest.json` por ruta relativa fuera de su paquete, y necesita el repo
+      completo en el build):
+      · `shell` — Build: `npm run build`, Start: `npm run start`.
+      · `api` (M3: valida scores+bonus, monedas, tienda de packs, regalo diario; cupos de
+        piques/cron de ligas quedan para M4-M5) — Build: `npm run build:api`, Start:
+        `npm run start:api`.
+- [ ] Variables: shell → SUPABASE_URL, SUPABASE_ANON, `VITE_API_URL` (URL pública del
+      servicio `api`); api → SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, `SHELL_ORIGIN` (URL
+      pública del servicio `shell`, para CORS).
 - [ ] Conectar dominio + SSL.
 
 ## 4. Claude Code (el grueso)

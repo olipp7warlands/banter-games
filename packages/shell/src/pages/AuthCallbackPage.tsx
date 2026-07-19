@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSession } from "../hooks/useSession";
 import { useProfile } from "../hooks/useProfile";
 import { color, font } from "../theme";
+import { AppShell } from "../components/AppShell";
 
 export function AuthCallbackPage() {
   const { session, loading: sessionLoading } = useSession();
@@ -20,8 +21,10 @@ export function AuthCallbackPage() {
   }, [sessionLoading, session, profileLoading, profile, navigate]);
 
   return (
-    <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", background: color.fondo }}>
-      <div style={{ fontFamily: font.body, color: color.tintaSuave }}>Entrando…</div>
-    </div>
+    <AppShell>
+      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
+        <div style={{ fontFamily: font.body, color: color.tintaSuave }}>Entrando…</div>
+      </div>
+    </AppShell>
   );
 }

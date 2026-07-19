@@ -7,6 +7,7 @@ import { OnboardingPage } from "./pages/OnboardingPage";
 import { GroupsListPage } from "./pages/GroupsListPage";
 import { GroupDetailPage } from "./pages/GroupDetailPage";
 import { JoinGroupPage } from "./pages/JoinGroupPage";
+import { StorePage } from "./pages/StorePage";
 import { color, font } from "./theme";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -48,6 +49,14 @@ export function App() {
         element={
           <RequireAuth>
             <GroupDetailPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/store"
+        element={
+          <RequireAuth>
+            <StorePage />
           </RequireAuth>
         }
       />

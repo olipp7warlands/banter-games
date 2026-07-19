@@ -4,6 +4,7 @@ import { color, font, radius } from "../theme";
 import { useGroupLookup, useJoinGroup } from "../hooks/useGroups";
 import { CategoryBadge } from "../components/CategoryBadge";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { AppShell } from "../components/AppShell";
 
 export function JoinGroupPage() {
   const { code: codeParam } = useParams<{ code?: string }>();
@@ -22,8 +23,8 @@ export function JoinGroupPage() {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: color.fondo, padding: 24 }}>
-      <div style={{ maxWidth: 360, margin: "0 auto" }}>
+    <AppShell>
+      <div style={{ padding: 24 }}>
         <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, color: color.tinta, marginBottom: 16 }}>
           Únete a un grupo
         </div>
@@ -81,6 +82,6 @@ export function JoinGroupPage() {
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

@@ -5,6 +5,9 @@ import { useMyGroups } from "../hooks/useGroups";
 import { CategoryBadge } from "../components/CategoryBadge";
 import { CreateGroupModal } from "../components/CreateGroupModal";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { WalletBadge } from "../components/WalletBadge";
+import { RewardBox } from "../components/RewardBox";
+import { AppShell } from "../components/AppShell";
 
 export function GroupsListPage() {
   const { data: groups, isLoading } = useMyGroups();
@@ -12,7 +15,31 @@ export function GroupsListPage() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: "100dvh", background: color.fondo, padding: 20 }}>
+    <AppShell>
+      <div style={{ padding: 20 }}>
+      {/* Packs/monedas son de cuenta, no por grupo: cabecera del home, no de cada grupo. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <WalletBadge />
+        <RewardBox />
+        <button
+          onClick={() => navigate("/store")}
+          style={{
+            marginLeft: "auto",
+            background: "none",
+            border: `1px solid ${color.linea}`,
+            borderRadius: radius,
+            padding: "7px 12px",
+            fontFamily: font.display,
+            fontWeight: 700,
+            fontSize: 13,
+            color: color.tinta,
+            cursor: "pointer",
+          }}
+        >
+          🎁 Tienda
+        </button>
+      </div>
+
       <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 26, color: color.tinta, marginBottom: 18 }}>
         Tus grupos
       </div>
@@ -74,6 +101,7 @@ export function GroupsListPage() {
           }}
         />
       )}
-    </div>
+      </div>
+    </AppShell>
   );
 }
