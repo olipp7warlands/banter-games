@@ -56,12 +56,21 @@ async function main() {
     }
   }
 
-  const { error } = await supabase.from("daily_games").upsert(rows, { onConflict: "fecha,categoria" });
+  // ignoreDuplicates: true = INSERT ... ON CONFLICT (fecha,categoria) DO NOTHING. A
+  // propósito, no DO UPDATE: si una categoría ya tiene fila sembrada (p.ej. cultura/ingenio,
+  // sembradas desde M1), volver a ejecutar este script con una fórmula de seed distinta no
+  // debe cambiarles el reto ya asignado — solo rellena huecos (categorías nuevas, o días
+  // sin sembrar todavía).
+  const { error } = await supabase
+    .from("daily_games")
+    .upsert(rows, { onConflict: "fecha,categoria", ignoreDuplicates: true });
   if (error) {
     console.error("Error sembrando daily_games:", error.message);
     process.exit(1);
   }
-  console.log(`Sembrados ${rows.length} registros de daily_games (${DAYS} días, categorías: ${Object.keys(GAME_BY_CATEGORY).join(", ")}).`);
+  console.log(
+    `Intentados ${rows.length} registros de daily_games (${DAYS} días, categorías: ${Object.keys(GAME_BY_CATEGORY).join(", ")}) — las filas ya existentes no se tocan.`
+  );
 }
 
 main();
