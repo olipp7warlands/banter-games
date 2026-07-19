@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { color, font, radius } from "../theme";
-import { CATEGORY_META, CATEGORIES_DISPONIBLES_M1 } from "../lib/categories";
+import { CATEGORY_META, CATEGORIAS_CON_JUEGO } from "../lib/categories";
 import type { Categoria, Group } from "../types/db";
 import { useCreateGroup } from "../hooks/useGroups";
 import { PrimaryButton } from "./PrimaryButton";
@@ -40,7 +40,7 @@ export function CreateGroupModal({ onClose, onCreated }: Props) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>
           {ALL_CATEGORIES.map((cat) => {
-            const disponible = CATEGORIES_DISPONIBLES_M1.includes(cat);
+            const disponible = CATEGORIAS_CON_JUEGO.includes(cat);
             const meta = CATEGORY_META[cat];
             const selected = categoria === cat;
             return (

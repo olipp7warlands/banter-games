@@ -33,15 +33,26 @@ App social de **minijuegos diarios con tu círculo** (familia, amigos, compañer
 - **Legal de la Game Factory**: se clonan **mecánicas**, nunca arte, nombres ni assets.
 
 ## Milestones (en orden)
-- **M1**: shell Vite+TS con auth Supabase, crear/unirse a grupo (código de invitación), juego del día servido, y 2 juegos migrados a bundle+SDK (Trivia y Flechas).
-- **M2**: chat Realtime con eventos de score (con `secs`), podio y ranking, rachas.
-- **M3**: crono+bonus server-validado, monedas, tienda de packs, regalo diario.
-- **M4**: Modo Picante + mesas Mundial (moderación básica por reglas).
-- **M5**: Ligas + anti-cheat (reglas de `docs/DB_SCHEMA.sql`: score>p99, secs infrahumanos, varianza 0) + backoffice conectado.
-- **M6** (spec completa en `docs/FEATURE_CHEF_Y_RETOS.md`): Chef del Día + Ronda Extra con mutators, El Guante (reto con bote), replay UGC y retos virales jugables sin login.
-  - **M6a**: mutators en SDK/manifest + Chef del Día + Ronda Extra + medalla (sin compartir).
-  - **M6b**: El Guante + tarjeta-imagen compartible + tabla `challenges` + `/reto/:id` jugable como invitado (sin vídeo).
-  - **M6c**: input-log + vídeo-replay + fantasma 👻 + verificación de replays (puente a M5 anti-cheat).
+- **M1**: shell Vite+TS con auth Supabase, crear/unirse a grupo (código de invitación), juego del día servido, y 2 juegos migrados a bundle+SDK (Trivia y Flechas). ✅
+- **M2**: chat Realtime con eventos de score (con `secs`), podio y ranking, rachas. ✅
+- **M3**: crono+bonus server-validado, monedas, tienda de packs, regalo diario. ✅
+- **M4**: migración de TODOS los juegos del prototipo al SDK v1, por lotes (Lote A, B, C…) —
+  hoy solo Trivia y Flechas están migrados de los ~15 core + 3 exclusivos de pack.
+- **M5**: Backoffice real — conectar `prototype/banter-backoffice.html` a datos reales; mover
+  el catálogo de juegos de `manifest/manifest.json` a una tabla `games` en DB (swap ya
+  encapsulado en `packages/api/src/manifest.ts::getPar`); panel QA.
+- **M6**: Fábrica Comunitaria — los propios usuarios proponen juegos nuevos con ayuda de IA
+  (pipeline referencia→spec(IA)→arquetipo+config→QA→manifest, ver `docs/DECISIONES.md`).
+  Sigue aplicando el "Legal de la Game Factory" de más abajo (clonar mecánicas, nunca
+  arte/nombres/assets) — aquí con más motivo, al venir la referencia de un usuario.
+- **M7** (antes M4): Modo Picante + mesas Mundial (moderación básica por reglas).
+- **M8** (antes M5, sin la parte de backoffice que ahora vive en M5): Ligas + anti-cheat
+  (reglas de `docs/DB_SCHEMA.sql`: score>p99, secs infrahumanos, varianza 0).
+- **M9** (antes M6; spec completa en `docs/FEATURE_CHEF_Y_RETOS.md`): Chef del Día + Ronda
+  Extra con mutators, El Guante (reto con bote), replay UGC y retos virales jugables sin login.
+  - **M9a**: mutators en SDK/manifest + Chef del Día + Ronda Extra + medalla (sin compartir).
+  - **M9b**: El Guante + tarjeta-imagen compartible + tabla `challenges` + `/reto/:id` jugable como invitado (sin vídeo).
+  - **M9c**: input-log + vídeo-replay + fantasma 👻 + verificación de replays (puente a M8 anti-cheat).
 
 ## Estilo de trabajo
 TypeScript estricto, componentes pequeños, tokens de diseño en un solo archivo (`packages/shell/src/theme.ts`), tests para scoring/crono/rotación de seed. Reutilizar la lógica del prototipo traduciéndola, no copiando el archivo entero.

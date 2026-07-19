@@ -1,5 +1,5 @@
-// Siembra docs/DB_SCHEMA.sql::daily_games para los juegos migrados en M1 (trivia, flechas).
-// Uso: node scripts/seed-daily-games.mjs [--days=30]
+// Siembra docs/DB_SCHEMA.sql::daily_games para los juegos ya migrados al SDK v1 (M4, por
+// lotes — ver CLAUDE.md). Uso: node scripts/seed-daily-games.mjs [--days=30]
 // Requiere scripts/.env con SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (nunca VITE_*, nunca al cliente).
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -19,17 +19,20 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 const daysArg = process.argv.find((a) => a.startsWith("--days="));
 const DAYS = daysArg ? parseInt(daysArg.split("=")[1], 10) : 30;
 
-// Rotación M1: solo las 2 categorías con juego real. DAY = floor(ms/86400000) en UTC (seed global, sin ambigüedad de zona horaria).
-const GAME_BY_CATEGORY = { cultura: "trivia", ingenio: "flechas" };
-const CATEGORY_OFFSET = { cultura: 0, ingenio: 1 };
+// Solo las categorías con juego real migrado (ver lib/categories.ts::CATEGORIAS_CON_JUEGO
+// en el shell — mantener ambas listas en sync). DAY = floor(ms/86400000) en UTC (seed
+// global, sin ambigüedad de zona horaria).
+const GAME_BY_CATEGORY = { cultura: "trivia", ingenio: "flechas", palabras: "anagram", rapidez: "math", clasicos: "truefalse" };
+const CATEGORIAS = Object.keys(GAME_BY_CATEGORY);
+const CATEGORY_OFFSET = Object.fromEntries(CATEGORIAS.map((cat, i) => [cat, i]));
 
 function dayIndexUTC(date) {
   return Math.floor(date.getTime() / 86400000);
 }
 
 function seedFor(dayIndex, categoria) {
-  // Determinista por (día, categoría): cultura e ingenio nunca comparten seed el mismo día.
-  return dayIndex * 2 + CATEGORY_OFFSET[categoria];
+  // Determinista por (día, categoría): ninguna categoría comparte seed el mismo día.
+  return dayIndex * CATEGORIAS.length + CATEGORY_OFFSET[categoria];
 }
 
 function isoDate(dayIndex) {
