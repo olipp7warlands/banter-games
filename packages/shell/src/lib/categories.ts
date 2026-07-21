@@ -39,4 +39,5 @@ export const GAME_META: Record<string, { nombre: string; par: number | null; emo
   ordenar: { nombre: "Ordenar", par: 80, emoji: "🧴" },
   tornillos: { nombre: "Tornillos", par: 60, emoji: "🔩" },
   merge: { nombre: "2048", par: null, emoji: "🧮" },
+  memoria: { nombre: "Memoria", par: 70, emoji: "🃏" },
 };

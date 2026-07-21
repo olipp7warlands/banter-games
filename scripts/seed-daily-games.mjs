@@ -31,7 +31,7 @@ const GAMES_BY_CATEGORY = {
   ingenio: ["flechas", "oddone", "ordenar", "tornillos", "merge"],
   palabras: ["anagram"],
   rapidez: ["math"],
-  clasicos: ["truefalse"],
+  clasicos: ["truefalse", "memoria"],
 };
 const CATEGORIAS = Object.keys(GAMES_BY_CATEGORY);
 const CATEGORY_OFFSET = Object.fromEntries(CATEGORIAS.map((cat, i) => [cat, i]));
