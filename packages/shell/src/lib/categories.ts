@@ -35,4 +35,5 @@ export const GAME_META: Record<string, { nombre: string; par: number | null; emo
   truefalse: { nombre: "Verdadero o Falso", par: 35, emoji: "✅" },
   anagram: { nombre: "Anagrama", par: 75, emoji: "🔤" },
   acertijos: { nombre: "Acertijos", par: 60, emoji: "❓" },
+  oddone: { nombre: "El diferente", par: 45, emoji: "🔍" },
 };

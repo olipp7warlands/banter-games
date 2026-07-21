@@ -12,7 +12,7 @@ const shellRoot = path.resolve(__dirname, "..");
 const packagesRoot = path.resolve(shellRoot, "..");
 const publicDir = path.join(shellRoot, "public");
 
-const GAMES = ["trivia", "flechas", "math", "truefalse", "anagram", "acertijos"];
+const GAMES = ["trivia", "flechas", "math", "truefalse", "anagram", "acertijos", "oddone"];
 
 fs.rmSync(path.join(publicDir, "games-sdk"), { recursive: true, force: true });
 fs.rmSync(path.join(publicDir, "games"), { recursive: true, force: true });
