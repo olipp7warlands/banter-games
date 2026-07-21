@@ -41,7 +41,7 @@ const GAMES_BY_CATEGORY = {
   cultura: ["trivia", "acertijos"],
   ingenio: ["flechas", "oddone", "ordenar", "tornillos", "merge", "bloques"],
   palabras: ["anagram"],
-  rapidez: ["math"],
+  rapidez: ["math", "stack"],
   clasicos: ["truefalse", "memoria"],
 };
 const CATEGORIAS = Object.keys(GAMES_BY_CATEGORY);
