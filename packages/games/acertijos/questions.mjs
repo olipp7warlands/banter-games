@@ -1,0 +1,48 @@
+// Banco de acertijos (pensamiento lateral). mulberry32(seed) elige 5 sin repetir cada día
+// (ver buildQuestions en shuffle.mjs) y baraja las opciones de cada uno. Los 5 primeros son
+// los originales de prototype/banter.jsx::RIDDLES (verbatim); el resto amplía el banco con
+// acertijos clásicos internacionales, evitando juegos de palabras que solo funcionan en
+// español y referencias locales que no viajan (mismo criterio que trivia/questions.mjs
+// amplió cultura general).
+export const QUESTIONS = [
+  { q: "Cuanto más quitas, más grande se hace. ¿Qué es?", opts: ["Un agujero", "Una montaña", "Un globo", "El mar"], a: 0 },
+  { q: "Tiene ciudades pero no casas, ríos pero no agua. ¿Qué es?", opts: ["Un libro", "Un mapa", "Un sueño", "Una caja"], a: 1 },
+  { q: "¿Qué se moja mientras seca?", opts: ["El sol", "La toalla", "El viento", "La arena"], a: 1 },
+  { q: "Vuela sin alas y llora sin ojos. ¿Qué es?", opts: ["Un pájaro", "La nube", "El avión", "El humo"], a: 1 },
+  { q: "Cuantas más hay, menos ves. ¿Qué son?", opts: ["Las estrellas", "Las nubes", "Las tinieblas", "Las velas"], a: 2 },
+  { q: "Tiene ojos pero no puede ver. ¿Qué es?", opts: ["Una patata", "Una aguja", "Un huracán", "Un pez"], a: 0 },
+  { q: "Tiene un ojo pero no puede ver. ¿Qué es?", opts: ["Una aguja", "Un botón", "Un huracán", "Un anillo"], a: 0 },
+  { q: "Cuanto más lo alimentas, más crece. Si le das agua, muere. ¿Qué es?", opts: ["El fuego", "Un árbol", "Un rumor", "Una idea"], a: 0 },
+  { q: "Tiene cara y manos, pero no tiene cuerpo. ¿Qué es?", opts: ["Un reloj", "Un muñeco", "Un espejo", "Un maniquí"], a: 0 },
+  { q: "Tiene cara y cruz, pero no tiene cuerpo. ¿Qué es?", opts: ["Una moneda", "Una carta", "Un dado", "Un botón"], a: 0 },
+  { q: "Cuantas más doy, más dejo atrás. ¿Qué son?", opts: ["Las huellas", "Las fotos", "Las cartas", "Las promesas"], a: 0 },
+  { q: "Siempre viene, pero nunca llega. ¿Qué es?", opts: ["El mañana", "El otoño", "El eco", "El horizonte"], a: 0 },
+  { q: "Tiene dientes pero no puede morder. ¿Qué es?", opts: ["Un peine", "Una sierra", "Un tenedor", "Una llave"], a: 0 },
+  { q: "Nace en el mar, viaja hasta la orilla y allí muere. ¿Qué es?", opts: ["Una ola", "Un pez", "Un barco", "La marea"], a: 0 },
+  { q: "Te lo dan al nacer, es tuyo, pero lo usan más los demás que tú. ¿Qué es?", opts: ["Tu nombre", "Tu sombra", "Tu voz", "Tu reflejo"], a: 0 },
+  { q: "Te sigue todo el día, pero desaparece cuando cae la noche. ¿Qué es?", opts: ["Tu sombra", "Tu reflejo", "Tu eco", "Tu recuerdo"], a: 0 },
+  { q: "Habla sin boca y oye sin oídos. No tiene cuerpo, pero responde cuando le gritas. ¿Qué es?", opts: ["El eco", "El viento", "El silencio", "Un fantasma"], a: 0 },
+  { q: "Cuanto más trabaja, más corta se vuelve. ¿Qué es?", opts: ["Una vela", "Una cuerda", "Una batería", "Una historia"], a: 0 },
+  { q: "Tiene teclas pero no abre ninguna puerta, y tiene espacio pero no es un cuarto. ¿Qué es?", opts: ["Un teclado", "Un piano", "Una caja fuerte", "Un armario"], a: 0 },
+  { q: "Tiene un pie pero no puede caminar, y tiene cima pero no tiene cabeza. ¿Qué es?", opts: ["Una montaña", "Una escalera", "Un árbol", "Una torre"], a: 0 },
+  { q: "Tiene boca pero nunca habla, y tiene cauce pero nunca duerme. ¿Qué es?", opts: ["Un río", "Un lago", "Un pozo", "Un mar"], a: 0 },
+  { q: "Se abre pero no es una flor, y te protege pero no tiene brazos. ¿Qué es?", opts: ["Un paraguas", "Una tienda de campaña", "Una capa", "Un cofre"], a: 0 },
+  { q: "Tiene páginas pero no es un árbol, y cuenta historias sin decir una palabra. ¿Qué es?", opts: ["Un libro", "Una carta", "Un cuadro", "Una fotografía"], a: 0 },
+  { q: "Te muestra tal como eres, pero no tiene vida propia. ¿Qué es?", opts: ["Un espejo", "Una fotografía", "Una sombra", "Un retrato"], a: 0 },
+  { q: "Nadie puede detenerlo, nadie puede tocarlo, pero todos lo sienten pasar. ¿Qué es?", opts: ["El tiempo", "El viento", "El destino", "El silencio"], a: 0 },
+  { q: "Te hace llorar sin que estés triste. ¿Qué es?", opts: ["Una cebolla", "Una película", "El humo", "El viento"], a: 0 },
+  { q: "Aparece después de la lluvia, tiene colores, pero nunca podrás tocarlo. ¿Qué es?", opts: ["Un arcoíris", "Una mariposa", "Un charco", "Una nube"], a: 0 },
+  { q: "Llega cada noche sin que nadie lo invite, y se va apenas abres los ojos. ¿Qué es?", opts: ["El sueño", "La oscuridad", "El silencio", "El cansancio"], a: 0 },
+  { q: "Puede mover un barco entero, pero nadie lo ha visto nunca. ¿Qué es?", opts: ["El viento", "El mar", "Un motor", "La marea"], a: 0 },
+  { q: "Llena toda la sala sin ocupar espacio. ¿Qué es?", opts: ["La música", "La luz", "El humo", "El eco"], a: 0 },
+  { q: "Cuanto más tiempo lo guardas, más pesado se vuelve. ¿Qué es?", opts: ["Un secreto", "Un baúl", "Una piedra", "Una deuda"], a: 0 },
+  { q: "Une dos lugares, pero nunca se mueve de sitio. ¿Qué es?", opts: ["Un puente", "Un camino", "Un túnel", "Una escalera"], a: 0 },
+  { q: "Todos tienen una, no hay dos iguales, y la tuya nunca cambia. ¿Qué es?", opts: ["La huella dactilar", "La voz", "La sombra", "La firma"], a: 0 },
+  { q: "Fue hoy alguna vez, pero nunca volverá a serlo. ¿Qué es?", opts: ["El ayer", "El mañana", "El pasado", "Un recuerdo"], a: 0 },
+  { q: "Sube y baja todo el día, pero siempre se queda en el mismo sitio. ¿Qué es?", opts: ["Una escalera", "Un ascensor", "Una ola", "Un columpio"], a: 0 },
+  { q: "Es pequeña, de metal, y abre puertas sin tener manos. ¿Qué es?", opts: ["Una llave", "Una tarjeta", "Un código", "Un timbre"], a: 0 },
+  { q: "Guarda un árbol entero dentro de sí misma, sin ser un árbol. ¿Qué es?", opts: ["Una semilla", "Una maceta", "Una raíz", "Una rama"], a: 0 },
+  { q: "Contiene todas las palabras que existen, pero no dice ninguna por sí solo. ¿Qué es?", opts: ["Un diccionario", "Un libro", "Una biblioteca", "Un idioma"], a: 0 },
+  { q: "Flota en el cielo sin alas, y guarda agua sin ser una botella. ¿Qué es?", opts: ["Una nube", "Un globo", "Un pájaro", "Una cometa"], a: 0 },
+  { q: "Se puede romper sin hacer ningún ruido. ¿Qué es?", opts: ["El silencio", "Un secreto", "Una promesa", "Un cristal"], a: 0 },
+];

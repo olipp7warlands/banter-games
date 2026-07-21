@@ -22,8 +22,18 @@ const DAYS = daysArg ? parseInt(daysArg.split("=")[1], 10) : 30;
 // Solo las categorías con juego real migrado (ver lib/categories.ts::CATEGORIAS_CON_JUEGO
 // en el shell — mantener ambas listas en sync). DAY = floor(ms/86400000) en UTC (seed
 // global, sin ambigüedad de zona horaria).
-const GAME_BY_CATEGORY = { cultura: "trivia", ingenio: "flechas", palabras: "anagram", rapidez: "math", clasicos: "truefalse" };
-const CATEGORIAS = Object.keys(GAME_BY_CATEGORY);
+//
+// Cada categoría lista TODOS sus juegos migrados (no solo uno): cuando una categoría tiene
+// varios, el juego del día rota entre ellos de forma determinista (ver gameFor) en vez de
+// fijar uno solo — necesario desde que "cultura" pasó a tener trivia Y acertijos (M4 Lote B).
+const GAMES_BY_CATEGORY = {
+  cultura: ["trivia", "acertijos"],
+  ingenio: ["flechas"],
+  palabras: ["anagram"],
+  rapidez: ["math"],
+  clasicos: ["truefalse"],
+};
+const CATEGORIAS = Object.keys(GAMES_BY_CATEGORY);
 const CATEGORY_OFFSET = Object.fromEntries(CATEGORIAS.map((cat, i) => [cat, i]));
 
 function dayIndexUTC(date) {
@@ -32,7 +42,16 @@ function dayIndexUTC(date) {
 
 function seedFor(dayIndex, categoria) {
   // Determinista por (día, categoría): ninguna categoría comparte seed el mismo día.
+  // Independiente de qué juego rote ese día dentro de la categoría (ver gameFor).
   return dayIndex * CATEGORIAS.length + CATEGORY_OFFSET[categoria];
+}
+
+// Alterna día a día entre los juegos de una categoría (dayIndex % length). Con un solo
+// juego en la lista se comporta igual que el mapeo fijo anterior (sin regresión para
+// ingenio/palabras/rapidez/clasicos mientras solo tengan un juego cada una).
+function gameFor(dayIndex, categoria) {
+  const juegos = GAMES_BY_CATEGORY[categoria];
+  return juegos[dayIndex % juegos.length];
 }
 
 function isoDate(dayIndex) {
@@ -46,11 +65,11 @@ async function main() {
   for (let i = 0; i < DAYS; i++) {
     const dayIndex = startDay + i;
     const fecha = isoDate(dayIndex);
-    for (const categoria of Object.keys(GAME_BY_CATEGORY)) {
+    for (const categoria of CATEGORIAS) {
       rows.push({
         fecha,
         categoria,
-        game_id: GAME_BY_CATEGORY[categoria],
+        game_id: gameFor(dayIndex, categoria),
         seed: seedFor(dayIndex, categoria),
       });
     }
@@ -69,7 +88,7 @@ async function main() {
     process.exit(1);
   }
   console.log(
-    `Intentados ${rows.length} registros de daily_games (${DAYS} días, categorías: ${Object.keys(GAME_BY_CATEGORY).join(", ")}) — las filas ya existentes no se tocan.`
+    `Intentados ${rows.length} registros de daily_games (${DAYS} días, categorías: ${CATEGORIAS.join(", ")}) — las filas ya existentes no se tocan.`
   );
 }
 
