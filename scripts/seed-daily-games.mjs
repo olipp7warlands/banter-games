@@ -28,7 +28,7 @@ const DAYS = daysArg ? parseInt(daysArg.split("=")[1], 10) : 30;
 // fijar uno solo — necesario desde que "cultura" pasó a tener trivia Y acertijos (M4 Lote B).
 const GAMES_BY_CATEGORY = {
   cultura: ["trivia", "acertijos"],
-  ingenio: ["flechas", "oddone", "ordenar", "tornillos"],
+  ingenio: ["flechas", "oddone", "ordenar", "tornillos", "merge"],
   palabras: ["anagram"],
   rapidez: ["math"],
   clasicos: ["truefalse"],

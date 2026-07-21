@@ -38,4 +38,5 @@ export const GAME_META: Record<string, { nombre: string; par: number | null; emo
   oddone: { nombre: "El diferente", par: 45, emoji: "🔍" },
   ordenar: { nombre: "Ordenar", par: 80, emoji: "🧴" },
   tornillos: { nombre: "Tornillos", par: 60, emoji: "🔩" },
+  merge: { nombre: "2048", par: null, emoji: "🧮" },
 };
