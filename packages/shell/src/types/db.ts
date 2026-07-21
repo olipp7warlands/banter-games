@@ -108,6 +108,24 @@ export interface AdminRow {
   created_at: string;
 }
 
+// Feature flags / A/B (docs/DB_SCHEMA.sql, RLS añadida en docs/DB_SCHEMA_M5.sql).
+export interface FlagRow {
+  key: string;
+  estado: "on" | "off" | "ab";
+  pct: number;
+  nota: string | null;
+}
+
+// Cola de reportes de moderación (mesas Mundial, chat) — docs/DB_SCHEMA.sql, RLS añadida en
+// docs/DB_SCHEMA_M5.sql. Sin flujo todavía que los cree (M7+); solo lectura/resolución.
+export interface ReportRow {
+  id: string;
+  tipo: string | null;
+  ref: Record<string, unknown> | null;
+  estado: string;
+  created_at: string;
+}
+
 // Resultado de la función RPC group_lookup_by_code() (docs/DB_SCHEMA_RLS_M1.sql) —
 // solo columnas no sensibles, sin invite_code ni created_by.
 export interface GroupLookupResult {
