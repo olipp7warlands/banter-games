@@ -39,7 +39,7 @@ const RESOW_FUTURE = process.argv.includes("--resow-future");
 // fijar uno solo — necesario desde que "cultura" pasó a tener trivia Y acertijos (M4 Lote B).
 const GAMES_BY_CATEGORY = {
   cultura: ["trivia", "acertijos"],
-  ingenio: ["flechas", "oddone", "ordenar", "tornillos", "merge"],
+  ingenio: ["flechas", "oddone", "ordenar", "tornillos", "merge", "bloques"],
   palabras: ["anagram"],
   rapidez: ["math"],
   clasicos: ["truefalse", "memoria"],
