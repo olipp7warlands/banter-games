@@ -1,6 +1,16 @@
 // Siembra docs/DB_SCHEMA.sql::daily_games para los juegos ya migrados al SDK v1 (M4, por
-// lotes — ver CLAUDE.md). Uso: node scripts/seed-daily-games.mjs [--days=30]
+// lotes — ver CLAUDE.md). Uso: node scripts/seed-daily-games.mjs [--days=30] [--resow-future]
 // Requiere scripts/.env con SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (nunca VITE_*, nunca al cliente).
+//
+// --resow-future: cuando GAMES_BY_CATEGORY cambia (nuevo lote migrado, nueva rotación), los
+// días ya sembrados con la fórmula vieja no se actualizan solos — el upsert de abajo es
+// ON CONFLICT DO NOTHING a propósito. Sin este flag, los juegos nuevos no entrarían en
+// rotación hasta que caduque la ventana de ~30 días ya sembrada. El flag borra y vuelve a
+// sembrar SOLO fecha > hoy (nunca hoy, nunca el pasado) antes del upsert normal. Es seguro
+// porque docs/DB_SCHEMA_RLS_M1.sql define `daily_games publico hasta hoy` — la política de
+// SELECT es `using (fecha <= current_date)`, así que ningún cliente (solo este script, con
+// SERVICE_ROLE_KEY, que bypassa RLS) ha podido leer ni jugar una fila con fecha futura
+// todavía. Borrar y re-sembrar esas filas no cambia ningún reto que alguien ya haya visto.
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import dotenv from "dotenv";
@@ -18,6 +28,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const daysArg = process.argv.find((a) => a.startsWith("--days="));
 const DAYS = daysArg ? parseInt(daysArg.split("=")[1], 10) : 30;
+const RESOW_FUTURE = process.argv.includes("--resow-future");
 
 // Solo las categorías con juego real migrado (ver lib/categories.ts::CATEGORIAS_CON_JUEGO
 // en el shell — mantener ambas listas en sync). DAY = floor(ms/86400000) en UTC (seed
@@ -61,6 +72,21 @@ function isoDate(dayIndex) {
 async function main() {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const startDay = dayIndexUTC(new Date());
+  const today = isoDate(startDay);
+
+  if (RESOW_FUTURE) {
+    // gt (>), no gte: hoy queda intocable a propósito, igual que el pasado.
+    const { error: delError, count } = await supabase
+      .from("daily_games")
+      .delete({ count: "exact" })
+      .gt("fecha", today);
+    if (delError) {
+      console.error("Error borrando filas futuras (--resow-future):", delError.message);
+      process.exit(1);
+    }
+    console.log(`--resow-future: borradas ${count ?? "?"} filas con fecha > ${today}.`);
+  }
+
   const rows = [];
   for (let i = 0; i < DAYS; i++) {
     const dayIndex = startDay + i;
