@@ -43,12 +43,12 @@ playRouter.post("/play", requireUser, async (req, res: Response) => {
       return;
     }
 
-    const par = getPar(gameId);
+    const par = await getPar(gameId);
     const bonus = computeBonus(par, secsValue);
     const total = score + bonus;
     // Secs sospechosamente bajo: se guarda igual (no se quema el intento por un fallo de
     // reloj) pero valid:false, así que no cuenta para ranking/ligas. Anti-cheat estadístico
-    // completo (score>p99, varianza) queda para M5, ver CLAUDE.md.
+    // completo (score>p99, varianza) queda para M8, ver CLAUDE.md.
     const valid = secsValue === null || secsValue >= MIN_HUMAN_SECS;
 
     const play = await insertPlay({
