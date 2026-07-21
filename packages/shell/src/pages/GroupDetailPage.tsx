@@ -17,7 +17,8 @@ import { CountdownChip } from "../components/CountdownChip";
 import { Confetti } from "../components/Confetti";
 import { WalletBadge } from "../components/WalletBadge";
 import { AppShell } from "../components/AppShell";
-import { GAME_META, CATEGORY_SPLIT } from "../lib/categories";
+import { CATEGORY_SPLIT } from "../lib/categories";
+import { useGames } from "../hooks/useGames";
 
 type Tab = "hoy" | "ranking" | "chat";
 
@@ -31,6 +32,7 @@ export function GroupDetailPage() {
   const { data: dailyGame, isLoading: dailyLoading } = useDailyGame(group?.categoria);
   const { data: plays } = useMyTodayPlays(id);
   const { data: ranking, refetch: refetchRanking } = useGroupRanking(id);
+  const { data: games } = useGames();
   const submitPlay = useSubmitPlay(id, dailyGame?.game_id);
   const [tab, setTab] = useState<Tab>("hoy");
   const [playing, setPlaying] = useState(false);
@@ -44,7 +46,7 @@ export function GroupDetailPage() {
     );
   }
 
-  const gameMeta = dailyGame ? GAME_META[dailyGame.game_id] : undefined;
+  const gameMeta = dailyGame ? games?.find((g) => g.id === dailyGame.game_id) : undefined;
   const remaining = attemptsRemaining(plays ?? []);
   const best = bestScore(plays ?? []);
   const [splitA, splitB] = CATEGORY_SPLIT[group.categoria];

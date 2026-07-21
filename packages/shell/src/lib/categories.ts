@@ -28,18 +28,6 @@ export const CATEGORY_SPLIT: Record<Categoria, [string, string]> = {
 // estado "qa" en manifest.json).
 export const CATEGORIAS_CON_JUEGO: Categoria[] = ["cultura", "ingenio", "palabras", "rapidez", "clasicos"];
 
-export const GAME_META: Record<string, { nombre: string; par: number | null; emoji: string }> = {
-  trivia: { nombre: "Trivia", par: 50, emoji: "🧠" },
-  flechas: { nombre: "Flechas", par: 90, emoji: "➡️" },
-  math: { nombre: "Cálculo", par: 45, emoji: "🔢" },
-  truefalse: { nombre: "Verdadero o Falso", par: 35, emoji: "✅" },
-  anagram: { nombre: "Anagrama", par: 75, emoji: "🔤" },
-  acertijos: { nombre: "Acertijos", par: 60, emoji: "❓" },
-  oddone: { nombre: "El diferente", par: 45, emoji: "🔍" },
-  ordenar: { nombre: "Ordenar", par: 80, emoji: "🧴" },
-  tornillos: { nombre: "Tornillos", par: 60, emoji: "🔩" },
-  merge: { nombre: "2048", par: null, emoji: "🧮" },
-  memoria: { nombre: "Memoria", par: 70, emoji: "🃏" },
-  bloques: { nombre: "Bloques", par: null, emoji: "🟥" },
-  stack: { nombre: "Stack", par: null, emoji: "🧱" },
-};
+// GAME_META (nombre/par/emoji por juego) vivía aquí como objeto estático — M5 lo sustituye
+// por la tabla `games` en DB (docs/DB_SCHEMA_M5.sql), leída vía hooks/useGames.ts, para que
+// el backoffice pueda editar el `par` de un juego y que el shell lo refleje sin redeploy.

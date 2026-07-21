@@ -8,6 +8,14 @@ import { GroupsListPage } from "./pages/GroupsListPage";
 import { GroupDetailPage } from "./pages/GroupDetailPage";
 import { JoinGroupPage } from "./pages/JoinGroupPage";
 import { StorePage } from "./pages/StorePage";
+import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { AdminCalendarPage } from "./pages/AdminCalendarPage";
+import { AdminCatalogPage } from "./pages/AdminCatalogPage";
+import { AdminAntiCheatPage } from "./pages/AdminAntiCheatPage";
+import { AdminFlagsPage } from "./pages/AdminFlagsPage";
+import { AdminSearchPage } from "./pages/AdminSearchPage";
+import { RequireAdmin } from "./components/RequireAdmin";
+import { AdminLayout } from "./components/AdminLayout";
 import { color, font } from "./theme";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -76,6 +84,24 @@ export function App() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth>
+            <RequireAdmin>
+              <AdminLayout />
+            </RequireAdmin>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="calendar" element={<AdminCalendarPage />} />
+        <Route path="catalog" element={<AdminCatalogPage />} />
+        <Route path="anti-cheat" element={<AdminAntiCheatPage />} />
+        <Route path="flags" element={<AdminFlagsPage />} />
+        <Route path="search" element={<AdminSearchPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/groups" replace />} />
     </Routes>
   );

@@ -88,6 +88,26 @@ export interface GiftClaim {
   created_at: string;
 }
 
+// Catálogo de juegos (docs/DB_SCHEMA_M5.sql) — reemplaza manifest/manifest.json y el
+// GAME_META estático que vivía en lib/categories.ts. `categoria` sin acotar a Categoria:
+// los 3 exclusivos de pack usan "pack:hero"/"pack:pirate"/"pack:space", fuera del enum de 6
+// categorías de `groups`.
+export interface GameRow {
+  id: string;
+  nombre: string;
+  emoji: string | null;
+  categoria: string;
+  version: string | null;
+  estado: "prod" | "qa" | "off";
+  par: number | null;
+  temas: string[];
+}
+
+export interface AdminRow {
+  user_id: string;
+  created_at: string;
+}
+
 // Resultado de la función RPC group_lookup_by_code() (docs/DB_SCHEMA_RLS_M1.sql) —
 // solo columnas no sensibles, sin invite_code ni created_by.
 export interface GroupLookupResult {
