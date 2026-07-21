@@ -36,4 +36,5 @@ export const GAME_META: Record<string, { nombre: string; par: number | null; emo
   anagram: { nombre: "Anagrama", par: 75, emoji: "🔤" },
   acertijos: { nombre: "Acertijos", par: 60, emoji: "❓" },
   oddone: { nombre: "El diferente", par: 45, emoji: "🔍" },
+  ordenar: { nombre: "Ordenar", par: 80, emoji: "🧴" },
 };
